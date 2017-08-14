@@ -162,6 +162,10 @@ class Rufo::NewFormatter
       visit_END(node)
     when :alias, :var_alias
       visit_alias(node)
+    when :aref
+      visit_array_access(node)
+    when :args_add_block
+      visit_call_args(node)
     else
       bug "Unhandled node: #{node.first} at #{current_token}"
     end
@@ -654,7 +658,7 @@ class Rufo::NewFormatter
       check :on_comma
       write ","
       next_token
-      skip_space
+      skip_space_or_newline
       write_line
     end
   end
@@ -662,8 +666,6 @@ class Rufo::NewFormatter
   def visit_hash(node)
     # [:hash, elements]
     _, elements = node
-
-    # token_column = current_token_column
 
     check :on_lbrace
     group do
@@ -850,6 +852,84 @@ class Rufo::NewFormatter
     end
   end
 
+  def visit_array_access(node)
+    # exp[arg1, ..., argN]
+    #
+    # [:aref, name, args]
+    _, name, args = node
+
+    visit_array_getter_or_setter name, args
+  end
+
+  def visit_array_getter_or_setter(name, args)
+    visit name
+
+    check :on_lbracket
+    write "["
+    next_token
+
+    column = @column
+
+    first_space = skip_space_or_newline
+
+    group do
+      # Sometimes args comes with an array...
+      if args && args[0].is_a?(Array)
+        visit_literal_elements args
+      else
+        if newline? || comment?
+          if args
+            write_softline
+          else
+            skip_space_or_newline
+          end
+        else
+          write_softline
+        end
+
+        if args
+          indent do
+            visit args
+          end
+        end
+      end
+
+      write_if_break(",", "")
+      write_softline
+      skip_space_or_newline
+      check :on_rbracket
+      write "]"
+    end
+
+    next_token
+  end
+
+  def visit_call_args(node)
+    # [:args_add_block, args, block]
+    _, args, block_arg = node
+
+    if !args.empty? && args[0] == :args_add_star
+      # arg1, ..., *star
+      visit args
+    else
+      group { visit_comma_separated_list args }
+    end
+
+    if block_arg
+      skip_space_or_newline
+
+      if comma?
+        indent(next_indent) do
+          write_params_comma
+        end
+      end
+
+      consume_op "&"
+      skip_space_or_newline
+      visit block_arg
+    end
+  end
+
   def to_ary(node)
     node[0].is_a?(Symbol) ? [node] : node
   end
@@ -939,6 +1019,14 @@ class Rufo::NewFormatter
 
   def last?(i, array)
     i == array.size - 1
+  end
+
+  def newline?
+    current_token_kind == :on_nl || current_token_kind == :on_ignored_nl
+  end
+
+  def comment?
+    current_token_kind == :on_comment
   end
 
   def keyword?(kw)
