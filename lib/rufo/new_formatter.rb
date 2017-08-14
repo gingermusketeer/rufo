@@ -289,14 +289,26 @@ class Rufo::NewFormatter
   end
 
   def handle_comment
-    check :on_comment
+    value = current_comment_value.rstrip
 
     if @group
-      write_trailing current_token_value.rstrip
+      write_trailing value
       write_hardline
     else
       write " " unless last_is_newline?
-      write current_token_value.rstrip
+      write value
+    end
+  end
+
+  def current_comment_value
+    check :on_comment
+
+    value = current_token_value
+
+    if value =~ /^#[^\s]/
+      "# #{value[1..-1]}"
+    else
+      value
     end
   end
 

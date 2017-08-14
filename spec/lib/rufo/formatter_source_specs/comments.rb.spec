@@ -16,6 +16,22 @@
 # foo
 # bar
 
+#~# ORIGINAL comment with no space before body
+
+#comment
+
+#~# EXPECTED
+
+# comment
+
+#~# ORIGINAL comment with many spaces before body
+
+#           comment
+
+#~# EXPECTED
+
+#           comment
+
 #~# ORIGINAL integer_with_comment
 
 1   # foo
@@ -245,3 +261,34 @@ foo: "foo" # this is important
 foo(
   foo: "foo", # this is important
 )
+
+#~# ORIGINAL skip comments after all arguments
+
+foo(
+  foo:"foo", #thoughts
+foo:"foo", # thoughts
+)
+
+#~# EXPECTED
+
+foo(
+  foo: "foo", # thoughts
+  foo: "foo", # thoughts
+)
+
+#~# ORIGINAL skip comments after some method arguments
+
+foo(foo:"foo",#my commentary
+  bar:"baz",
+    carpe: :diem,            # THOUGHTS
+           final: :value)
+
+#~# EXPECTED
+
+foo(
+  foo: "foo", # my commentary
+  bar: "baz",
+  carpe: :diem, # THOUGHTS
+  final: :value,
+)
+    
