@@ -101,6 +101,7 @@ RSpec.describe Rufo::NewFormatter do
     align_hash_keys
     align_mix
     array_literal
+    array_setter
     hash_literal
     and_or_not
     assignment_operators

@@ -166,6 +166,8 @@ class Rufo::NewFormatter
       visit_array_access(node)
     when :args_add_block
       visit_call_args(node)
+    when :aref_field
+      visit_array_setter(node)
     else
       bug "Unhandled node: #{node.first} at #{current_token}"
     end
@@ -871,6 +873,16 @@ class Rufo::NewFormatter
     # exp[arg1, ..., argN]
     #
     # [:aref, name, args]
+    _, name, args = node
+
+    visit_array_getter_or_setter name, args
+  end
+
+  def visit_array_setter(node)
+    # exp[arg1, ..., argN]
+    # (followed by `=`, though not included in this node)
+    #
+    # [:aref_field, name, args]
     _, name, args = node
 
     visit_array_getter_or_setter name, args
