@@ -175,7 +175,7 @@ class Rufo::NewFormatter
   #
   # - with_lines:  consume whole line for each expression
   def visit_exps(exps, with_lines: true)
-    skip_space_or_newline
+    consume_end_of_line(at_prefix: true)
 
     exps.each_with_index do |exp, i|
       visit exp
@@ -208,7 +208,10 @@ class Rufo::NewFormatter
       debug("consume_end_of_line: start #{current_token_kind} #{current_token_value}")
       case current_token_kind
       when :on_nl, :on_ignored_nl, :on_semicolon
-        if last == :newline
+        if at_prefix
+          move_to_next_token
+          next
+        elsif last == :newline
           multiple_lines = true
         else
           write_hardline
@@ -221,8 +224,20 @@ class Rufo::NewFormatter
         # ignore spaces
         move_to_next_token
       when :on_comment
-        write " " unless last_is_newline?
-        write current_token_value
+        handle_comment
+
+        if current_token_value.end_with?("\n")
+          write_hardline 
+          found_newline = true
+          last = :newline
+        end
+
+        if token_kind(next_token) == :on_ignored_nl
+          write_hardline
+          move_to_next_token
+          last = :newline
+        end
+
         move_to_next_token
       else
         debug("consume_end_of_line: end #{current_token_kind}")
@@ -233,7 +248,8 @@ class Rufo::NewFormatter
     # Output a newline if we didn't do so yet:
     # either we didn't find a newline and we are at the end of a line (and we didn't just pass a semicolon),
     # or we just passed multiple lines (but printed only one)
-    if (!found_newline && !at_prefix) || (multiple_lines && want_multiline)
+    if !at_prefix && !found_newline
+      debug "consume_end_of_line: needs an extra newline"
       write_hardline
     end
   end
@@ -245,11 +261,20 @@ class Rufo::NewFormatter
       case current_token_kind
       when :on_nl, :on_ignored_nl, :on_sp, :on_semicolon
         move_to_next_token
+      when :on_comment
+        handle_comment
+        move_to_next_token
       else
         debug("skip_space_or_newline: end #{current_token_kind} #{current_token_value}")
         break
       end
     end
+  end
+
+  def handle_comment
+    check :on_comment
+    write " " unless last_is_newline?
+    write current_token_value.rstrip
   end
 
   def visit_begin(node)
@@ -1067,6 +1092,10 @@ class Rufo::NewFormatter
     @tokens.pop
   end
 
+  def next_token
+    @tokens[-2]
+  end
+
   def consume_token_value(value)
     write value
   end
@@ -1076,14 +1105,20 @@ class Rufo::NewFormatter
     @tokens.last
   end
 
+  def token_kind(token)
+    token ? token[1] : :on_eof
+  end
+
   def current_token_kind
-    tok = current_token
-    tok ? tok[1] : :on_eof
+    token_kind(current_token)
   end
 
   def current_token_value
-    tok = current_token
-    tok ? tok[2] : ""
+    token_value(current_token)
+  end
+
+  def token_value(token)
+    token ? token[2] : ""
   end
 
   def current_token_line

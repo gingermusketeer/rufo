@@ -24,7 +24,7 @@
 
 1 # foo
 
-#~# ORIGINAL comment_with_double_line_break
+#~# ORIGINAL comment with double line break
 
 # a
 
@@ -49,7 +49,7 @@
 
 # b
 
-#~# ORIGINAL comment_and_integer
+#~# ORIGINAL comment and integer
 
 # a
 1
@@ -59,7 +59,7 @@
 # a
 1
 
-#~# ORIGINAL skip comment_double_newline_integer
+#~# ORIGINAL comment double newline integer
 
 # a
 
@@ -72,7 +72,7 @@
 
 1
 
-#~# ORIGINAL skip integer_with_comment_and_following_comment
+#~# ORIGINAL integer_with_comment_and_following_comment
 
 1 # a
 # b
@@ -82,7 +82,7 @@
 1 # a
 # b
 
-#~# ORIGINAL skip integer_with_comment_and_multiline_break
+#~# ORIGINAL integer_with_comment_and_multiline_break
 
 1 # a
 
@@ -94,7 +94,7 @@
 
 # b
 
-#~# ORIGINAL skip integers_separated_by_comments
+#~# ORIGINAL integers_separated_by_comments
 
 1 # a
 
@@ -106,7 +106,7 @@
 
 2 # b
 
-#~# ORIGINAL skip multiple_trailing_comments
+#~# ORIGINAL trailing commens with many newlines
 
 1 # a
 
@@ -119,7 +119,7 @@
 
 2 # b
 
-#~# ORIGINAL skip more_trailing_comments
+#~# ORIGINAL more_trailing_comments
 
 1 # a
 
@@ -136,7 +136,7 @@
 
 2 # b
 
-#~# ORIGINAL skip still_more_trailing_comments
+#~# ORIGINAL still_more_trailing_comments
 
 1 # a
 
