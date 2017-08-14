@@ -67,11 +67,11 @@ class Rufo::NewFormatter
     when :@gvar
       # [:@gvar, "$abc", [1, 0]]
       write node[1]
-      next_token
+      move_to_next_token
     when :@op
       # [:@op, "*", [1, 1]]
       write node[1]
-      next_token
+      move_to_next_token
     when :const_ref
       # [:const_ref, [:@const, "Foo", [1, 8]]]
       visit node[1]
@@ -131,7 +131,7 @@ class Rufo::NewFormatter
       # [:@label, "foo:", [1, 3]]
       write node[1]
       check :on_label
-      next_token
+      move_to_next_token
     when :class
       visit_class(node)
     when :symbol_literal
@@ -214,12 +214,12 @@ class Rufo::NewFormatter
           write_hardline
         end
 
-        next_token
+        move_to_next_token
         last = :newline
         found_newline = true
       when :on_sp
         # ignore spaces
-        next_token
+        move_to_next_token
       else
         debug("consume_end_of_line: end #{current_token_kind}")
         break
@@ -240,7 +240,7 @@ class Rufo::NewFormatter
       debug("skip_space_or_newline: start #{current_token_kind} #{current_token_value}")
       case current_token_kind
       when :on_nl, :on_ignored_nl, :on_sp, :on_semicolon
-        next_token
+        move_to_next_token
       else
         debug("skip_space_or_newline: end #{current_token_kind} #{current_token_value}")
         break
@@ -369,7 +369,7 @@ class Rufo::NewFormatter
       skip_space
 
       if current_token_kind == :on_lparen
-        next_token
+        move_to_next_token
         skip_space
       end
 
@@ -384,7 +384,7 @@ class Rufo::NewFormatter
 
           write_softline
           write ")"
-          next_token
+          move_to_next_token
         end
       end
 
@@ -408,7 +408,7 @@ class Rufo::NewFormatter
       check :on_op
 
       write op[1]
-      next_token
+      move_to_next_token
 
       visit_assign_value value
     end
@@ -672,7 +672,7 @@ class Rufo::NewFormatter
       skip_space
       check :on_comma
       write ","
-      next_token
+      move_to_next_token
       skip_space_or_newline
       write_line
     end
@@ -685,7 +685,7 @@ class Rufo::NewFormatter
     check :on_lbrace
     group do
       write "{"
-      next_token
+      move_to_next_token
 
       if elements
         indent do
@@ -700,7 +700,7 @@ class Rufo::NewFormatter
       check :on_rbrace
       write "}"
     end
-    next_token
+    move_to_next_token
   end
 
   def visit_array(node)
@@ -718,7 +718,7 @@ class Rufo::NewFormatter
     check :on_lbracket
     group do
       write "["
-      next_token
+      move_to_next_token
 
       if elements
         indent do
@@ -732,7 +732,7 @@ class Rufo::NewFormatter
       write "]"
     end
 
-    next_token
+    move_to_next_token
   end
 
   def visit_class(node)
@@ -765,7 +765,7 @@ class Rufo::NewFormatter
         consume_token :on_comma
         write_line
       elsif comma?
-        next_token
+        move_to_next_token
       elsif is_last
         if inside_hash
           write_if_break(",", " ")
@@ -881,7 +881,7 @@ class Rufo::NewFormatter
 
     check :on_lbracket
     write "["
-    next_token
+    move_to_next_token
 
     column = @column
 
@@ -916,7 +916,7 @@ class Rufo::NewFormatter
       write "]"
     end
 
-    next_token
+    move_to_next_token
   end
 
   def visit_call_args(node)
@@ -964,7 +964,7 @@ class Rufo::NewFormatter
   def consume_token(kind)
     check kind
     consume_token_value(current_token_value)
-    next_token
+    move_to_next_token
   end
 
   def consume_op(value)
@@ -973,7 +973,7 @@ class Rufo::NewFormatter
       bug "Expected op #{value}, not #{current_token_value}"
     end
     write value
-    next_token
+    move_to_next_token
   end
 
   def consume_keyword(value)
@@ -982,14 +982,14 @@ class Rufo::NewFormatter
       bug "Expected keyword #{value}, not #{current_token_value}"
     end
     write value
-    next_token
+    move_to_next_token
   end
 
   def consume_op_or_keyword(op)
     case current_token_kind
     when :on_op, :on_kw
       write current_token_value
-      next_token
+      move_to_next_token
     else
       bug "Expected op or kw, not #{current_token_kind}"
     end
@@ -1002,13 +1002,13 @@ class Rufo::NewFormatter
 
   def skip_space
     first_space = space? ? current_token : nil
-    next_token while space?
+    move_to_next_token while space?
     first_space
   end
 
   def skip_semicolons
     while semicolon? || space?
-      next_token
+      move_to_next_token
     end
   end
 
@@ -1059,7 +1059,7 @@ class Rufo::NewFormatter
     end
   end
 
-  def next_token
+  def move_to_next_token
     @tokens.pop
   end
 
@@ -1116,7 +1116,7 @@ class Rufo::NewFormatter
   def write_params_comma
     skip_space
     consume_token :on_comma
-    next_token
+    move_to_next_token
     skip_space
     write_line
   end
