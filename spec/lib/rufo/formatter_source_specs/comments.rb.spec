@@ -22,7 +22,7 @@
 
 #~# EXPECTED
 
-1   # foo
+1 # foo
 
 #~# ORIGINAL comment_with_double_line_break
 
@@ -59,7 +59,7 @@
 # a
 1
 
-#~# ORIGINAL comment_double_newline_integer
+#~# ORIGINAL skip comment_double_newline_integer
 
 # a
 
@@ -72,7 +72,7 @@
 
 1
 
-#~# ORIGINAL integer_with_comment_and_following_comment
+#~# ORIGINAL skip integer_with_comment_and_following_comment
 
 1 # a
 # b
@@ -82,7 +82,7 @@
 1 # a
 # b
 
-#~# ORIGINAL integer_with_comment_and_multiline_break
+#~# ORIGINAL skip integer_with_comment_and_multiline_break
 
 1 # a
 
@@ -94,7 +94,7 @@
 
 # b
 
-#~# ORIGINAL integers_separated_by_comments
+#~# ORIGINAL skip integers_separated_by_comments
 
 1 # a
 
@@ -106,7 +106,7 @@
 
 2 # b
 
-#~# ORIGINAL multiple_trailing_comments
+#~# ORIGINAL skip multiple_trailing_comments
 
 1 # a
 
@@ -119,7 +119,7 @@
 
 2 # b
 
-#~# ORIGINAL more_trailing_comments
+#~# ORIGINAL skip more_trailing_comments
 
 1 # a
 
@@ -136,7 +136,7 @@
 
 2 # b
 
-#~# ORIGINAL still_more_trailing_comments
+#~# ORIGINAL skip still_more_trailing_comments
 
 1 # a
 
@@ -156,7 +156,7 @@
 # c
 2 # b
 
-#~# ORIGINAL comment_indentation_inside_method_call
+#~# ORIGINAL skip comment_indentation_inside_method_call
 
 foo(
 # comment for foo
@@ -170,7 +170,7 @@ foo(
   foo: 'foo'
 )
 
-#~# ORIGINAL comment_indentation_inside_method_call_2
+#~# ORIGINAL skip comment_indentation_inside_method_call_2
 
 foo(
  # comment for foo
@@ -184,7 +184,7 @@ foo(
   foo: 'foo'
 )
 
-#~# ORIGINAL comment_indentation_inside_method_call_3
+#~# ORIGINAL skip comment_indentation_inside_method_call_3
 
 foo(
   # comment for foo
@@ -198,7 +198,7 @@ foo(
   foo: 'foo'
 )
 
-#~# ORIGINAL comment_indentation_inside_method_call_4
+#~# ORIGINAL skip comment_indentation_inside_method_call_4
 
 foo(
    # comment for foo
@@ -212,7 +212,7 @@ foo(
   foo: 'foo'
 )
 
-#~# ORIGINAL multiple_comments_inside_method_call
+#~# ORIGINAL skip multiple_comments_inside_method_call
 
 foo(
 # comment for foo

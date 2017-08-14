@@ -220,6 +220,10 @@ class Rufo::NewFormatter
       when :on_sp
         # ignore spaces
         move_to_next_token
+      when :on_comment
+        write " " unless last_is_newline?
+        write current_token_value
+        move_to_next_token
       else
         debug("consume_end_of_line: end #{current_token_kind}")
         break
