@@ -212,7 +212,7 @@ foo(
   foo: 'foo',
 )
 
-#~# ORIGINAL skip multiple_comments_inside_method_call
+#~# ORIGINAL multiple_comments_inside_method_call
 
 foo(
 # comment for foo

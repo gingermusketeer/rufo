@@ -264,12 +264,21 @@ class Rufo::NewFormatter
 
   # Skip spaces and newlines
   def skip_space_or_newline
+    skipped_one_newline = false
+    skipped_empty_line = false
+
     loop do
       debug("skip_space_or_newline: start #{current_token_kind} #{current_token_value}")
       case current_token_kind
-      when :on_nl, :on_ignored_nl, :on_sp, :on_semicolon
+      when :on_nl, :on_ignored_nl
+        skipped_empty_line = skipped_one_newline
+        skipped_one_newline = true
+        move_to_next_token
+      when :on_sp, :on_semicolon
         move_to_next_token
       when :on_comment
+        write_hardline if skipped_empty_line
+
         handle_comment
         move_to_next_token
       else
@@ -285,8 +294,7 @@ class Rufo::NewFormatter
     write current_token_value.rstrip
 
     if @group
-      write_breaking
-      write_softline
+      write_hardline
     end
   end
 
@@ -678,16 +686,25 @@ class Rufo::NewFormatter
       consume_token :on_lparen
       write_softline
 
-      args_node = args[1]
+      # If there's a trailing comma then comes [:arg_paren, args],
+      # which is a bit unexpected, so we fix it
+      if args[1].is_a?(Array) && args[1][0].is_a?(Array)
+        args_node = [:args_add_block, args[1], false]
+      else
+        args_node = args[1]
+      end
 
       indent do
         visit(args_node)
       end
 
-      skip_space_or_newline
+      move_to_next_token if comma?
 
       write_if_break(",", "")
-      write_softline
+
+      skip_space_or_newline
+
+      write_softline unless last_is_newline?
 
       consume_token :on_rparen
     end
@@ -753,11 +770,9 @@ class Rufo::NewFormatter
       next if last?(i, nodes)
 
       skip_space
-      check :on_comma
-      write ","
-      move_to_next_token
-      skip_space_or_newline
+      consume_token :on_comma
       write_line
+      skip_space_or_newline
     end
   end
 
