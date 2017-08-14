@@ -231,3 +231,17 @@ foo(
   # comment for bar
   bar: 'bar',
 )
+
+#~# ORIGINAL comment after method argument
+
+foo(
+
+foo: "foo" # this is important
+
+)
+
+#~# EXPECTED
+
+foo(
+  foo: "foo", # this is important
+)

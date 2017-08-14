@@ -290,11 +290,13 @@ class Rufo::NewFormatter
 
   def handle_comment
     check :on_comment
-    write " " if !@group && !last_is_newline?
-    write current_token_value.rstrip
 
     if @group
+      write_trailing current_token_value.rstrip
       write_hardline
+    else
+      write " " unless last_is_newline?
+      write current_token_value.rstrip
     end
   end
 
@@ -1246,6 +1248,12 @@ class Rufo::NewFormatter
     write(GroupIfBreak.new(break_value, no_break_value))
   end
 
+  def write_trailing(value)
+    fail "Can only write GroupTrailing inside a group" unless @group
+
+    write(GroupTrailing.new(value))
+  end
+
   def write_group(group)
     if @group
       @group.buffer.concat([group])
@@ -1319,6 +1327,7 @@ class Rufo::NewFormatter
 
   GroupIndent = Struct.new(:indent)
   GroupIfBreak = Struct.new(:break_value, :no_break_value)
+  GroupTrailing = Struct.new(:value)
 
   LINE = :line
   SOFTLINE = :softline
@@ -1335,6 +1344,8 @@ class Rufo::NewFormatter
         "\n"
       when GroupIfBreak
         breaking ? token.break_value : token.no_break_value
+      when GroupTrailing
+        token.value
       when String
         token
       when Group
@@ -1357,6 +1368,7 @@ class Rufo::NewFormatter
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
+      first_token = true
 
       while token = tokens.shift
         if token.is_a?(GroupIndent)
@@ -1372,26 +1384,19 @@ class Rufo::NewFormatter
         end
 
         case token
-        when String
+        when String, Group, LINE, SOFTLINE, HARDLINE
           output << string_value
-          last_was_newline = false
-        when LINE
+        when GroupTrailing
+          output << " " unless last_was_newline || first_token
           output << string_value
-          last_was_newline = breaking
-        when SOFTLINE
-          output << string_value
-          last_was_newline = breaking
-        when HARDLINE
-          output << string_value
-          last_was_newline = true
         when GroupIfBreak
           tokens.unshift(string_value)
-        when Group
-          output << string_value
-          last_was_newline = false
         else
           fail "Unknown token #{token.ai}"
         end
+
+        last_was_newline = current_is_newline
+        first_token = false
       end
 
       output
