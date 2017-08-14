@@ -80,6 +80,9 @@ class Rufo::NewFormatter
     when :vcall
       # [:vcall, exp]
       visit node[1]
+    when :fcall
+      # [:fcall, [:@ident, "foo", [1, 0]]]
+      visit node[1]
     when :@ident
       consume_token :on_ident
     when :assign
@@ -156,6 +159,11 @@ class Rufo::NewFormatter
       visit_mrhs_new_from_args(node)
     when :args_add_star
       visit_args_add_star(node)
+    when :bare_assoc_hash
+      # [:bare_assoc_hash, exps]
+      visit_comma_separated_list node[1]
+    when :method_add_arg
+      visit_call_without_receiver(node)
     when :BEGIN
       visit_BEGIN(node)
     when :END
@@ -273,8 +281,13 @@ class Rufo::NewFormatter
 
   def handle_comment
     check :on_comment
-    write " " unless last_is_newline?
+    write " " if !@group && !last_is_newline?
     write current_token_value.rstrip
+
+    if @group
+      write_breaking
+      write_softline
+    end
   end
 
   def visit_begin(node)
@@ -642,6 +655,44 @@ class Rufo::NewFormatter
     end
   end
 
+  def visit_call_without_receiver(node)
+    # foo(arg1, ..., argN)
+    #
+    # [:method_add_arg,
+    #   [:fcall, [:@ident, "foo", [1, 0]]],
+    #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+    _, name, args = node
+
+    visit name
+
+    visit_call_at_paren(node)
+  end
+
+  def visit_call_at_paren(node)
+    # [:method_add_arg,
+    #   [:fcall, [:@ident, "foo", [1, 0]]],
+    #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+    _, _name, args = node
+
+    group do
+      consume_token :on_lparen
+      write_softline
+
+      args_node = args[1]
+
+      indent do
+        visit(args_node)
+      end
+
+      skip_space_or_newline
+
+      write_if_break(",", "")
+      write_softline
+
+      consume_token :on_rparen
+    end
+  end
+
   def visit_BEGIN(node)
     visit_BEGIN_or_END node, "BEGIN"
   end
@@ -693,6 +744,9 @@ class Rufo::NewFormatter
 
   def visit_comma_separated_list(nodes)
     nodes = to_ary(nodes)
+
+    skip_space_or_newline
+
     nodes.each_with_index do |exp, i|
       visit exp
 
@@ -958,20 +1012,6 @@ class Rufo::NewFormatter
     else
       group { visit_comma_separated_list args }
     end
-
-    if block_arg
-      skip_space_or_newline
-
-      if comma?
-        indent(next_indent) do
-          write_params_comma
-        end
-      end
-
-      consume_op "&"
-      skip_space_or_newline
-      visit block_arg
-    end
   end
 
   def to_ary(node)
@@ -1196,7 +1236,7 @@ class Rufo::NewFormatter
       @group.buffer.concat([group])
     else
       debug "current_column: #{@column.ai}"
-      debug "write_group #{group.ai raw: true, index: false}"
+      puts "write_group #{group.ai raw: true, index: false}"
       group.buffer_string.each_char { |c| write(c) }
     end
   end
@@ -1242,6 +1282,7 @@ class Rufo::NewFormatter
     yield
     group_to_write = @group
     @group = old_group
+    @group.breaking = true if @group && group_to_write.breaking
     debug "WRITE GROUP #{group_to_write.object_id}"
     write_group group_to_write
   end

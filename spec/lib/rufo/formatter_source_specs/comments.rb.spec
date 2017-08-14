@@ -156,7 +156,7 @@
 # c
 2 # b
 
-#~# ORIGINAL skip comment_indentation_inside_method_call
+#~# ORIGINAL comment_indentation_inside_method_call
 
 foo(
 # comment for foo
@@ -167,10 +167,10 @@ foo: 'foo'
 
 foo(
   # comment for foo
-  foo: 'foo'
+  foo: 'foo',
 )
 
-#~# ORIGINAL skip comment_indentation_inside_method_call_2
+#~# ORIGINAL comment_indentation_inside_method_call_2
 
 foo(
  # comment for foo
@@ -181,10 +181,10 @@ foo: 'foo'
 
 foo(
   # comment for foo
-  foo: 'foo'
+  foo: 'foo',
 )
 
-#~# ORIGINAL skip comment_indentation_inside_method_call_3
+#~# ORIGINAL comment_indentation_inside_method_call_3
 
 foo(
   # comment for foo
@@ -195,10 +195,10 @@ foo: 'foo'
 
 foo(
   # comment for foo
-  foo: 'foo'
+  foo: 'foo',
 )
 
-#~# ORIGINAL skip comment_indentation_inside_method_call_4
+#~# ORIGINAL comment_indentation_inside_method_call_4
 
 foo(
    # comment for foo
@@ -209,7 +209,7 @@ foo: 'foo'
 
 foo(
   # comment for foo
-  foo: 'foo'
+  foo: 'foo',
 )
 
 #~# ORIGINAL skip multiple_comments_inside_method_call
