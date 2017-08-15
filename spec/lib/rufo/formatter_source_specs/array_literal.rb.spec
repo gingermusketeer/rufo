@@ -68,7 +68,7 @@
 
 [1, 2]
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
  [  # comment 
  1 , 
@@ -78,10 +78,10 @@
 
 [ # comment
   1,
-  2
+  2,
 ]
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
  [ 
  1 ,  # comment  
@@ -90,8 +90,8 @@
 #~# EXPECTED
 
 [
-  1,  # comment
-  2
+  1, # comment
+  2,
 ]
 
 #~# ORIGINAL
@@ -125,7 +125,7 @@
 
 [1, 2, 3, 4]
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
  [ 1 , 
  2, 3, 
@@ -134,9 +134,11 @@
 
 #~# EXPECTED
 
-[ 1,
-  2, 3,
-  4 # foo
+[
+  1,
+  2,
+  3,
+  4, # foo
 ]
 
 #~# ORIGINAL
@@ -152,7 +154,7 @@ begin
   [1, 2]
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
  [ 
  1 # foo
@@ -161,7 +163,7 @@ end
 #~# EXPECTED
 
 [
-  1 # foo
+  1, # foo
 ]
 
 #~# ORIGINAL
@@ -180,7 +182,7 @@ end
 
 [*x, 1]
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
  [ 1, *x ] 
 
@@ -206,7 +208,7 @@ x = [{ foo: 1 }]
 
 [1, 2]
 
-#~# ORIGINAL skip 
+#~# ORIGINAL comment in array
 
 [
   1,

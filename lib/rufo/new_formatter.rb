@@ -80,6 +80,9 @@ class Rufo::NewFormatter
     when :vcall
       # [:vcall, exp]
       visit node[1]
+    when :fcall
+      # [:fcall, [:@ident, "foo", [1, 0]]]
+      visit node[1]
     when :@ident
       consume_token :on_ident
     when :assign
@@ -156,6 +159,11 @@ class Rufo::NewFormatter
       visit_mrhs_new_from_args(node)
     when :args_add_star
       visit_args_add_star(node)
+    when :bare_assoc_hash
+      # [:bare_assoc_hash, exps]
+      visit_comma_separated_list node[1]
+    when :method_add_arg
+      visit_call_without_receiver(node)
     when :BEGIN
       visit_BEGIN(node)
     when :END
@@ -177,7 +185,7 @@ class Rufo::NewFormatter
   #
   # - with_lines:  consume whole line for each expression
   def visit_exps(exps, with_lines: true)
-    skip_space_or_newline
+    consume_end_of_line(at_prefix: true)
 
     exps.each_with_index do |exp, i|
       visit exp
@@ -205,12 +213,17 @@ class Rufo::NewFormatter
     multiple_lines = false                   # Did we pass through more than one newline?
     last = last_is_newline? ? :newline : nil # last token kind found
     found_newline = last == :newline         # Did we find any newline during this method?
+    debug("consume_end_of_line: begin. at_prefix: #{at_prefix}")
 
     loop do
-      debug("consume_end_of_line: start #{current_token_kind} #{current_token_value}")
+      debug("consume_end_of_line: start #{current_token_kind} #{current_token_value.inspect}")
       case current_token_kind
-      when :on_nl, :on_ignored_nl, :on_semicolon
-        if last == :newline
+      when :on_nl, :on_semicolon, :on_ignored_nl
+        if at_prefix
+          last = :newline
+          move_to_next_token
+          next
+        elsif last == :newline
           multiple_lines = true
         else
           write_hardline
@@ -222,6 +235,26 @@ class Rufo::NewFormatter
       when :on_sp
         # ignore spaces
         move_to_next_token
+      when :on_comment
+        if !at_prefix && multiple_lines
+          write_hardline
+          found_newline = false
+          multiple_lines = false
+        end
+
+        handle_comment
+
+        if current_token_value.end_with?("\n")
+          write_hardline 
+          found_newline = true
+        end
+
+        move_to_next_token
+
+        consume_ignored_newlines_as_one
+
+        consume_end_of_line(at_prefix: at_prefix, want_multiline: want_multiline)
+        break
       else
         debug("consume_end_of_line: end #{current_token_kind}")
         break
@@ -231,22 +264,76 @@ class Rufo::NewFormatter
     # Output a newline if we didn't do so yet:
     # either we didn't find a newline and we are at the end of a line (and we didn't just pass a semicolon),
     # or we just passed multiple lines (but printed only one)
-    if (!found_newline && !at_prefix) || (multiple_lines && want_multiline)
+    if !at_prefix && (!found_newline || multiple_lines)
+      debug "consume_end_of_line: needs an extra newline"
       write_hardline
     end
   end
 
+  def consume_ignored_newlines_as_one
+    needs_extra_newline = false
+
+    while current_token_kind == :on_ignored_nl
+      needs_extra_newline = true
+      move_to_next_token
+    end
+
+    write_hardline if needs_extra_newline
+  end
+
   # Skip spaces and newlines
   def skip_space_or_newline
+    skipped_one_newline = false
+    skipped_empty_line = false
+
     loop do
       debug("skip_space_or_newline: start #{current_token_kind} #{current_token_value}")
       case current_token_kind
-      when :on_nl, :on_ignored_nl, :on_sp, :on_semicolon
+      when :on_nl, :on_ignored_nl
+        skipped_empty_line = skipped_one_newline
+        skipped_one_newline = true
+        move_to_next_token
+      when :on_sp, :on_semicolon
+        move_to_next_token
+      when :on_comment
+        write_hardline if skipped_empty_line
+
+        handle_comment(trailing: !skipped_one_newline)
         move_to_next_token
       else
         debug("skip_space_or_newline: end #{current_token_kind} #{current_token_value}")
         break
       end
+    end
+  end
+
+  def handle_comment(trailing: true)
+    value = current_comment_value.rstrip
+
+    if @group
+      if trailing
+        write_trailing value
+      else
+        write_hardline
+        write value
+      end
+
+      write_breaking
+    else
+      write " " unless last_is_newline?
+      write value
+    end
+  end
+
+  def current_comment_value
+    check :on_comment
+
+    value = current_token_value
+
+    if value =~ /^#[^\s]/
+      "# #{value[1..-1]}"
+    else
+      value
     end
   end
 
@@ -615,6 +702,53 @@ class Rufo::NewFormatter
     end
   end
 
+  def visit_call_without_receiver(node)
+    # foo(arg1, ..., argN)
+    #
+    # [:method_add_arg,
+    #   [:fcall, [:@ident, "foo", [1, 0]]],
+    #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+    _, name, args = node
+
+    visit name
+
+    visit_call_at_paren(node)
+  end
+
+  def visit_call_at_paren(node)
+    # [:method_add_arg,
+    #   [:fcall, [:@ident, "foo", [1, 0]]],
+    #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+    _, _name, args = node
+
+    group do
+      consume_token :on_lparen
+      write_softline
+
+      # If there's a trailing comma then comes [:arg_paren, args],
+      # which is a bit unexpected, so we fix it
+      if args[1].is_a?(Array) && args[1][0].is_a?(Array)
+        args_node = [:args_add_block, args[1], false]
+      else
+        args_node = args[1]
+      end
+
+      indent do
+        visit(args_node)
+      end
+
+      move_to_next_token if comma?
+
+      write_if_break(",", "")
+
+      skip_space_or_newline
+
+      write_softline unless last_is_newline?
+
+      consume_token :on_rparen
+    end
+  end
+
   def visit_BEGIN(node)
     visit_BEGIN_or_END node, "BEGIN"
   end
@@ -666,15 +800,16 @@ class Rufo::NewFormatter
 
   def visit_comma_separated_list(nodes)
     nodes = to_ary(nodes)
+
+    consume_end_of_line(at_prefix: true)
+
     nodes.each_with_index do |exp, i|
       visit exp
 
       next if last?(i, nodes)
 
       skip_space
-      check :on_comma
-      write ","
-      move_to_next_token
+      consume_token :on_comma
       skip_space_or_newline
       write_line
     end
@@ -761,21 +896,29 @@ class Rufo::NewFormatter
     elements.each_with_index do |elem, i|
       visit elem
       is_last = last?(i, elements)
-      skip_space_or_newline
 
-      if comma? && !is_last
-        consume_token :on_comma
-        write_line
-      elsif comma?
-        move_to_next_token
-      elsif is_last
+      skip_space
+
+      if comma?
+        if is_last
+          move_to_next_token
+        else
+          consume_token :on_comma
+          skip_space_or_newline
+          write_line
+        end
+      end
+
+      if is_last
         if inside_hash
           write_if_break(",", " ")
         elsif inside_array
           write_if_break(",", "")
+          skip_space_or_newline
           write_softline
         end
       end
+
       skip_space_or_newline
     end
 
@@ -846,8 +989,11 @@ class Rufo::NewFormatter
       consume_op_or_keyword op
 
       skip_space_or_newline
-      write_line
-      visit right
+
+      indent do
+        write_line
+        visit right
+      end
     end
   end
 
@@ -940,20 +1086,6 @@ class Rufo::NewFormatter
       visit args
     else
       group { visit_comma_separated_list args }
-    end
-
-    if block_arg
-      skip_space_or_newline
-
-      if comma?
-        indent(next_indent) do
-          write_params_comma
-        end
-      end
-
-      consume_op "&"
-      skip_space_or_newline
-      visit block_arg
     end
   end
 
@@ -1075,6 +1207,10 @@ class Rufo::NewFormatter
     @tokens.pop
   end
 
+  def next_token
+    @tokens[-2]
+  end
+
   def consume_token_value(value)
     write value
   end
@@ -1084,14 +1220,20 @@ class Rufo::NewFormatter
     @tokens.last
   end
 
+  def token_kind(token)
+    token ? token[1] : :on_eof
+  end
+
   def current_token_kind
-    tok = current_token
-    tok ? tok[1] : :on_eof
+    token_kind(current_token)
   end
 
   def current_token_value
-    tok = current_token
-    tok ? tok[2] : ""
+    token_value(current_token)
+  end
+
+  def token_value(token)
+    token ? token[2] : ""
   end
 
   def current_token_line
@@ -1108,7 +1250,7 @@ class Rufo::NewFormatter
   end
 
   def write(value)
-    debug "write: #{value.inspect}"
+    # debug "write: #{value.inspect}"
     append(value)
     value = Group.string_value(value)
 
@@ -1119,7 +1261,7 @@ class Rufo::NewFormatter
       @column += value.length
     end
 
-    debug "checking for line length: #{@column.ai}"
+    # debug "checking for line length: #{@column.ai}"
     if @column > @line_length
       write_breaking
     end
@@ -1162,6 +1304,12 @@ class Rufo::NewFormatter
     fail "Can only write GroupIfBreak inside a group" unless @group
 
     write(GroupIfBreak.new(break_value, no_break_value))
+  end
+
+  def write_trailing(value)
+    fail "Can only write GroupTrailing inside a group" unless @group
+
+    write(GroupTrailing.new(value))
   end
 
   def write_group(group)
@@ -1215,6 +1363,7 @@ class Rufo::NewFormatter
     yield
     group_to_write = @group
     @group = old_group
+    @group.breaking = true if @group && group_to_write.breaking
     debug "WRITE GROUP #{group_to_write.object_id}"
     write_group group_to_write
   end
@@ -1236,6 +1385,7 @@ class Rufo::NewFormatter
 
   GroupIndent = Struct.new(:indent)
   GroupIfBreak = Struct.new(:break_value, :no_break_value)
+  GroupTrailing = Struct.new(:value)
 
   LINE = :line
   SOFTLINE = :softline
@@ -1252,6 +1402,8 @@ class Rufo::NewFormatter
         "\n"
       when GroupIfBreak
         breaking ? token.break_value : token.no_break_value
+      when GroupTrailing
+        token.value
       when String
         token
       when Group
@@ -1274,6 +1426,7 @@ class Rufo::NewFormatter
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
+      first_token = true
 
       while token = tokens.shift
         if token.is_a?(GroupIndent)
@@ -1289,26 +1442,19 @@ class Rufo::NewFormatter
         end
 
         case token
-        when String
+        when String, Group, LINE, SOFTLINE, HARDLINE
           output << string_value
-          last_was_newline = false
-        when LINE
+        when GroupTrailing
+          output << " " unless last_was_newline || first_token
           output << string_value
-          last_was_newline = breaking
-        when SOFTLINE
-          output << string_value
-          last_was_newline = breaking
-        when HARDLINE
-          output << string_value
-          last_was_newline = true
         when GroupIfBreak
           tokens.unshift(string_value)
-        when Group
-          output << string_value
-          last_was_newline = false
         else
           fail "Unknown token #{token.ai}"
         end
+
+        last_was_newline = current_is_newline
+        first_token = false
       end
 
       output

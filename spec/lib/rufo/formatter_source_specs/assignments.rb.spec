@@ -15,7 +15,7 @@ a   =
 
 a = 2
 
-#~# ORIGINAL skip  assignment with comment
+#~# ORIGINAL assignment with comment
 
 a   =   # hello 
 2
