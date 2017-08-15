@@ -263,24 +263,11 @@ x = {
     d: :d,
     e: :e,
     f: :f,
-    g: {
-      h: :h,
-      i: :i,
-      j: :j,
-      k: :k,
-      inner_last: :inner_last,
-    },
+    g: { h: :h, i: :i, j: :j, k: :k, inner_last: :inner_last },
   },
   d: :d,
-  e: {
-    f: :f,
-    g: :g,
-    h: :h,
-  },
-  f: {
-    g: :g,
-    h: :h,
-  },
+  e: { f: :f, g: :g, h: :h },
+  f: { g: :g, h: :h },
 }
 
 #~# ORIGINAL big hash
