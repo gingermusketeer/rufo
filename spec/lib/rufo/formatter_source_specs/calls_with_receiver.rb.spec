@@ -108,7 +108,7 @@ foo
     y: 2,
   )
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 foo
   .bar # x

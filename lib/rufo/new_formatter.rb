@@ -833,11 +833,11 @@ module Rufo
       dangerous_open_group! if group_owner
 
       visit obj
+      skip_space_or_newline
 
       indent do
         write_softline
 
-        skip_space_or_newline
         consume_token :on_period
         skip_space_or_newline
 
