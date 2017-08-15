@@ -1,4 +1,4 @@
-#~# ORIGINAL 
+#~# ORIGINAL
 
 foo.()
 
@@ -6,7 +6,7 @@ foo.()
 
 foo.()
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 foo.( 1 )
 
@@ -14,7 +14,7 @@ foo.( 1 )
 
 foo.(1)
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 foo.( 1, 2 )
 
@@ -22,10 +22,33 @@ foo.( 1, 2 )
 
 foo.(1, 2)
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 x.foo.( 1, 2 )
 
 #~# EXPECTED
 
 x.foo.(1, 2)
+
+#~# ORIGINAL skip
+
+x.
+  foo.
+  (1,2)
+
+#~# EXPECTED
+
+x.foo.(1, 2)
+
+#~# ORIGINAL skip calls with line_length
+#~# line_length: 10
+
+x.foo.yolo.yes.(1,2,3)
+
+#~# EXPECTED
+
+x
+  .foo
+  .yolo
+  .yes
+  .(1, 2, 3)

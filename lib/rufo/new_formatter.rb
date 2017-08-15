@@ -186,6 +186,8 @@ class Rufo::NewFormatter
       visit_comma_separated_list node[1]
     when :method_add_arg
       visit_call_without_receiver(node)
+    when :call
+      visit_call_with_receiver(node)
     when :BEGIN
       visit_BEGIN(node)
     when :END
@@ -766,8 +768,10 @@ class Rufo::NewFormatter
         args_node = args[1]
       end
 
-      indent do
-        visit(args_node)
+      if args_node
+        indent do
+          visit(args_node)
+        end
       end
 
       move_to_next_token if comma?
@@ -779,6 +783,20 @@ class Rufo::NewFormatter
       write_softline unless last_is_newline?
 
       consume_token :on_rparen
+    end
+  end
+
+  def visit_call_with_receiver(node)
+    # [:call, obj, :".", name]
+    _, obj, text, name = node
+
+    visit obj
+    consume_token :on_period
+
+    if name == :call
+      # :call means it's .()
+    else
+      visit name
     end
   end
 
