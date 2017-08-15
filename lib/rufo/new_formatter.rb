@@ -894,21 +894,29 @@ class Rufo::NewFormatter
     elements.each_with_index do |elem, i|
       visit elem
       is_last = last?(i, elements)
-      skip_space_or_newline
 
-      if comma? && !is_last
-        consume_token :on_comma
-        write_line
-      elsif comma?
-        move_to_next_token
-      elsif is_last
+      skip_space
+
+      if comma?
+        if is_last
+          move_to_next_token
+        else
+          consume_token :on_comma
+          skip_space_or_newline
+          write_line
+        end
+      end
+
+      if is_last
         if inside_hash
           write_if_break(",", " ")
         elsif inside_array
           write_if_break(",", "")
+          skip_space_or_newline
           write_softline
         end
       end
+
       skip_space_or_newline
     end
 
