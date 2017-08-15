@@ -50,8 +50,8 @@ x.
 
 x.foo.(1, 2)
 
-#~# ORIGINAL skip calls with line_length
-#~# line_length: 10
+#~# ORIGINAL calls with line_length
+#~# line_length: 15
 
 x.foo.yolo.yes.(1,2,3)
 
@@ -62,3 +62,18 @@ x
   .yolo
   .yes
   .(1, 2, 3)
+
+#~# ORIGINAL calls inside a method definition
+#~# line_length: 15
+
+def x; y.foo.yolo.yes.(1,2,3); end
+
+#~# EXPECTED
+
+def x
+  y
+    .foo
+    .yolo
+    .yes
+    .(1, 2, 3)
+end

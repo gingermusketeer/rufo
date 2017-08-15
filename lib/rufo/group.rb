@@ -44,7 +44,6 @@ module Rufo
 
     def buffer_string
       output, needs_break = build_buffer_string(breaking: false)
-      # @non_breaking_length = output.length + @indent
 
       if needs_break
         @breaking = true
@@ -59,7 +58,7 @@ module Rufo
     def build_buffer_string(breaking:)
       indent = @indent
       column = @indent
-      needs_break = false
+      needs_break = breaking
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
@@ -69,7 +68,7 @@ module Rufo
         output << value
         column += value.chomp.length
 
-        if column > @line_length
+        if column > @line_length && !needs_break
           needs_break = true
         end
 
@@ -81,7 +80,7 @@ module Rufo
       while token = tokens.shift
         if token.is_a?(GroupIndent)
           indent = token.indent
-          column = indent
+          column = indent if last_was_newline
           next
         elsif token == BREAKING
           needs_break = true

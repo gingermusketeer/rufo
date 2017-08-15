@@ -30,6 +30,10 @@ class NewFormatter
 
     # the current group
     @group = nil
+    # dangerous groups
+    # these are groups that you open and don't necessarily close inline with
+    # the structure of the s-expressions
+    @dangerous_groups = []
   end
 
   def format
@@ -793,20 +797,23 @@ class NewFormatter
     # [:call, obj, :".", name]
     _, obj, text, name = node
 
-    group do
-      visit obj
+    group_owner = !@group
+    dangerous_open_group! if group_owner
 
-      indent do
-        write_softline
+    visit obj
 
-        skip_space_or_newline
-        consume_token :on_period
-        skip_space_or_newline
+    indent do
+      write_softline
 
-        # :call means it's .()
-        visit name if name != :call
-      end
+      skip_space_or_newline
+      consume_token :on_period
+      skip_space_or_newline
+
+      # :call means it's .()
+      visit name if name != :call
     end
+
+    dangerous_close_group! if group_owner
   end
 
   def visit_BEGIN(node)
@@ -1322,7 +1329,6 @@ class NewFormatter
   end
 
   def write(value)
-    # debug "write: #{value.inspect}"
     append(value)
     value = Rufo::Group.string_value(value)
 
@@ -1385,7 +1391,6 @@ class NewFormatter
     if @group
       @group.buffer.concat([group])
     else
-      debug "current_column: #{@column.ai}"
       debug "write_group #{group.ai raw: true, index: false}"
       group.buffer_string.each_char { |c| write(c) }
     end
@@ -1432,6 +1437,19 @@ class NewFormatter
     yield
     group_to_write = @group
     @group = old_group
+    debug "WRITE GROUP #{group_to_write.object_id}"
+    write_group group_to_write
+  end
+
+  def dangerous_open_group!
+    @dangerous_groups.unshift(@group)
+    @group = Group.new(indent: @indent, line_length: @line_length)
+    debug "OPEN GROUP #{@group.object_id}"
+  end
+
+  def dangerous_close_group!
+    group_to_write = @group
+    @group = @dangerous_groups.shift
     debug "WRITE GROUP #{group_to_write.object_id}"
     write_group group_to_write
   end
