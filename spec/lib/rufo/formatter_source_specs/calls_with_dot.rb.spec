@@ -30,6 +30,16 @@ x.foo.( 1, 2 )
 
 x.foo.(1, 2)
 
+#~# ORIGINAL leading dot style
+
+x
+  .foo.
+  bar
+
+#~# EXPECTED
+
+x.foo.bar
+
 #~# ORIGINAL skip
 
 x.

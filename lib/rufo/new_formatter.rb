@@ -745,9 +745,11 @@ class Rufo::NewFormatter
     #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
     _, name, args = node
 
-    visit name
+    group do
+      visit name
 
-    visit_call_at_paren(node)
+      visit_call_at_paren(node)
+    end
   end
 
   def visit_call_at_paren(node)
@@ -790,13 +792,19 @@ class Rufo::NewFormatter
     # [:call, obj, :".", name]
     _, obj, text, name = node
 
-    visit obj
-    consume_token :on_period
+    group do
+      visit obj
 
-    if name == :call
-      # :call means it's .()
-    else
-      visit name
+      indent do
+        write_softline
+
+        skip_space_or_newline
+        consume_token :on_period
+        skip_space_or_newline
+
+        # :call means it's .()
+        visit name if name != :call
+      end
     end
   end
 
@@ -1323,11 +1331,6 @@ class Rufo::NewFormatter
     else
       @column += value.length
     end
-
-    # debug "checking for line length: #{@column.ai}"
-    if @column > @line_length
-      write_breaking
-    end
   end
 
   def write_params_comma
@@ -1339,7 +1342,9 @@ class Rufo::NewFormatter
   end
 
   def write_breaking
-    @group.breaking = true if @group
+    fail "Can only write BREAKING inside a group" unless @group
+
+    write BREAKING
   end
 
   def write_line
@@ -1421,12 +1426,11 @@ class Rufo::NewFormatter
 
   def group
     old_group = @group
-    @group = Group.new(indent: @indent)
+    @group = Group.new(indent: @indent, line_length: @line_length)
     debug "OPEN GROUP #{@group.object_id}"
     yield
     group_to_write = @group
     @group = old_group
-    @group.breaking = true if @group && group_to_write.breaking
     debug "WRITE GROUP #{group_to_write.object_id}"
     write_group group_to_write
   end
@@ -1453,6 +1457,7 @@ class Rufo::NewFormatter
   LINE = :line
   SOFTLINE = :softline
   HARDLINE = :hardline
+  BREAKING = :breaking
 
   class Group
     def self.string_value(token, breaking: false)
@@ -1471,29 +1476,66 @@ class Rufo::NewFormatter
         token
       when Group
         token.buffer_string
+      when BREAKING
+        ""
       else
         fail "Unknown token #{token.ai}"
       end
     end
 
-    def initialize(indent:, breaking: false)
-      @breaking = breaking
+    def initialize(indent:, line_length:)
       @indent = indent
       @buffer = []
+      @line_length = line_length
+      @breaking = false
     end
 
-    attr_accessor :buffer, :breaking
+    attr_accessor :buffer
+    attr_reader :breaking
 
     def buffer_string
+      output, needs_break = build_buffer_string(breaking: false)
+      # @non_breaking_length = output.length + @indent
+
+      if needs_break
+        @breaking = true
+        build_buffer_string(breaking: true).first
+      else
+        output
+      end
+    end
+
+    private
+    
+    def build_buffer_string(breaking:)
       indent = @indent
+      column = @indent
+      needs_break = false
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
       first_token = true
 
+      append = lambda do |value|
+        output << value
+        column += value.chomp.length
+
+        if column > @line_length
+          needs_break = true
+        end
+
+        if value.end_with?("\n")
+          column = indent
+        end
+      end
+
       while token = tokens.shift
         if token.is_a?(GroupIndent)
           indent = token.indent
+          column = indent
+          next
+        elsif token == BREAKING
+          needs_break = true
           next
         end
 
@@ -1501,15 +1543,18 @@ class Rufo::NewFormatter
         current_is_newline = string_value == "\n"
 
         if last_was_newline && !current_is_newline
-          output << (" " * indent)
+          append.call(" " * indent)
         end
 
         case token
-        when String, Group, LINE, SOFTLINE, HARDLINE
-          output << string_value
+        when String, LINE, SOFTLINE, HARDLINE
+          append.call string_value
+        when Group
+          append.call string_value
+          needs_break = true if token.breaking
         when GroupTrailing
-          output << " " unless last_was_newline || first_token
-          output << string_value
+          append.call " " unless last_was_newline || first_token
+          append.call string_value
         when GroupIfBreak
           tokens.unshift(string_value)
         else
@@ -1520,7 +1565,7 @@ class Rufo::NewFormatter
         first_token = false
       end
 
-      output
+      [output, needs_break]
     end
   end
 
