@@ -292,3 +292,44 @@ foo(
   final: :value,
 )
     
+#~# ORIGINAL comments inside a method definition
+
+#my_method
+def my_method
+
+  #we need to do some work
+  do_work
+
+  # we need to talk about things
+
+  talk_about_things
+
+
+  # we need to put it back together
+  put_it_back_together
+end
+
+#~# EXPECTED
+
+# my_method
+def my_method
+  # we need to do some work
+  do_work
+
+  # we need to talk about things
+
+  talk_about_things
+
+  # we need to put it back together
+  put_it_back_together
+end
+
+#~# ORIGINAL skip a comment in an operation
+
+1 + # math is so hard
+2
+
+#~# EXPECTED
+
+1 + # math is so hard
+  2

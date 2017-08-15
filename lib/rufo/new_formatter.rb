@@ -207,16 +207,29 @@ class Rufo::NewFormatter
   #
   # - at_prefix: are we at a point before an expression? (if so, we don't need a space before the first comment)
   # - want_multiline: do we want multiple lines to appear, or at most one?
+  def consume_ignored_newlines_as_one
+    needs_extra_newline = false
+
+    while current_token_kind == :on_ignored_nl
+      needs_extra_newline = true
+      move_to_next_token
+    end
+
+    write_hardline if needs_extra_newline
+  end
+
   def consume_end_of_line(at_prefix: false, want_multiline: true)
     multiple_lines = false                   # Did we pass through more than one newline?
     last = last_is_newline? ? :newline : nil # last token kind found
     found_newline = last == :newline         # Did we find any newline during this method?
+    debug("consume_end_of_line: begin")
 
     loop do
-      debug("consume_end_of_line: start #{current_token_kind} #{current_token_value}")
+      debug("consume_end_of_line: start #{current_token_kind} #{current_token_value.inspect}")
       case current_token_kind
-      when :on_nl, :on_ignored_nl, :on_semicolon
+      when :on_nl, :on_semicolon, :on_ignored_nl
         if at_prefix
+          last = :newline
           move_to_next_token
           next
         elsif last == :newline
@@ -232,21 +245,25 @@ class Rufo::NewFormatter
         # ignore spaces
         move_to_next_token
       when :on_comment
+        if !at_prefix && multiple_lines
+          write_hardline
+          found_newline = false
+          multiple_lines = false
+        end
+
         handle_comment
 
         if current_token_value.end_with?("\n")
           write_hardline 
           found_newline = true
-          last = :newline
-        end
-
-        if token_kind(next_token) == :on_ignored_nl
-          write_hardline
-          move_to_next_token
-          last = :newline
         end
 
         move_to_next_token
+
+        consume_ignored_newlines_as_one
+
+        consume_end_of_line(at_prefix: at_prefix, want_multiline: want_multiline)
+        break
       else
         debug("consume_end_of_line: end #{current_token_kind}")
         break
