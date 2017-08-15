@@ -324,7 +324,7 @@ def my_method
   put_it_back_together
 end
 
-#~# ORIGINAL skip a comment in an operation
+#~# ORIGINAL a comment in an operation
 
 1 + # math is so hard
 2

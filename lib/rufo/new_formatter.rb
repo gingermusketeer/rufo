@@ -207,17 +207,6 @@ class Rufo::NewFormatter
   #
   # - at_prefix: are we at a point before an expression? (if so, we don't need a space before the first comment)
   # - want_multiline: do we want multiple lines to appear, or at most one?
-  def consume_ignored_newlines_as_one
-    needs_extra_newline = false
-
-    while current_token_kind == :on_ignored_nl
-      needs_extra_newline = true
-      move_to_next_token
-    end
-
-    write_hardline if needs_extra_newline
-  end
-
   def consume_end_of_line(at_prefix: false, want_multiline: true)
     multiple_lines = false                   # Did we pass through more than one newline?
     last = last_is_newline? ? :newline : nil # last token kind found
@@ -277,6 +266,17 @@ class Rufo::NewFormatter
       debug "consume_end_of_line: needs an extra newline"
       write_hardline
     end
+  end
+
+  def consume_ignored_newlines_as_one
+    needs_extra_newline = false
+
+    while current_token_kind == :on_ignored_nl
+      needs_extra_newline = true
+      move_to_next_token
+    end
+
+    write_hardline if needs_extra_newline
   end
 
   # Skip spaces and newlines
@@ -979,8 +979,11 @@ class Rufo::NewFormatter
       consume_op_or_keyword op
 
       skip_space_or_newline
-      write_line
-      visit right
+
+      indent do
+        write_line
+        visit right
+      end
     end
   end
 
