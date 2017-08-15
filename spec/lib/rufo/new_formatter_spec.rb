@@ -100,6 +100,7 @@ RSpec.describe Rufo::NewFormatter do
     align_comments
     align_hash_keys
     align_mix
+    array_access
     array_literal
     array_setter
     hash_literal
