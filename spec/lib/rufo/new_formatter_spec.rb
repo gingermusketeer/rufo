@@ -89,11 +89,17 @@ def assert_format(code, expected)
 end
 
 RSpec.describe Rufo::NewFormatter do
-  Dir[File.join(NEW_FORMATTER_FILE_PATH, "/formatter_source_specs/rufi*")].each do |source_specs|
-    assert_source_specs(source_specs) if File.file?(source_specs)
-  end
-
   %w(
+    BEGIN
+    END
+    __END__
+    alias
+    align_assignments
+    align_case_when
+    align_chained_calls
+    align_comments
+    align_hash_keys
+    align_mix
     array_literal
     hash_literal
     and_or_not
@@ -101,14 +107,13 @@ RSpec.describe Rufo::NewFormatter do
     assignments
     backtick_strings
     array_access
+    rufi_basic
+    rufi_classes
+    rufi_strings
   ).each do |source_spec_name|
     file = File.join(NEW_FORMATTER_FILE_PATH, "/formatter_source_specs/#{source_spec_name}.rb.spec")
     fail "missing #{source_spec_name}" unless File.exist?(file)
     assert_source_specs(file) if File.file?(file)
-  end
-
-  Dir[File.join(NEW_FORMATTER_FILE_PATH, "/formatter_source_specs/*")].sort.take(11).each do |source_specs|
-    assert_source_specs(source_specs) if File.file?(source_specs)
   end
 
   # if NEW_FORMATTER_RUBY_VERSION >= Gem::Version.new("2.3")
