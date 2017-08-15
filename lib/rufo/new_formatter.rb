@@ -211,7 +211,7 @@ class Rufo::NewFormatter
     multiple_lines = false                   # Did we pass through more than one newline?
     last = last_is_newline? ? :newline : nil # last token kind found
     found_newline = last == :newline         # Did we find any newline during this method?
-    debug("consume_end_of_line: begin")
+    debug("consume_end_of_line: begin. at_prefix: #{at_prefix}")
 
     loop do
       debug("consume_end_of_line: start #{current_token_kind} #{current_token_value.inspect}")
@@ -262,7 +262,7 @@ class Rufo::NewFormatter
     # Output a newline if we didn't do so yet:
     # either we didn't find a newline and we are at the end of a line (and we didn't just pass a semicolon),
     # or we just passed multiple lines (but printed only one)
-    if !at_prefix && !found_newline
+    if !at_prefix && (!found_newline || multiple_lines)
       debug "consume_end_of_line: needs an extra newline"
       write_hardline
     end
