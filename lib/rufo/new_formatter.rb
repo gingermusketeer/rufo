@@ -83,6 +83,8 @@ class Rufo::NewFormatter
     when :fcall
       # [:fcall, [:@ident, "foo", [1, 0]]]
       visit node[1]
+    when :command
+      visit_command(node)
     when :@ident
       # [:@ident, "meth", [1, 2]]
       consume_token :on_ident
@@ -126,6 +128,22 @@ class Rufo::NewFormatter
       visit_array(node)
     when :assoc_new
       visit_hash_key_value(node)
+    when :break
+      # [:break, exp]
+      visit_control_keyword node, "break"
+    when :next
+      # [:next, exp]
+      visit_control_keyword node, "next"
+    when :yield
+      # [:yield, exp]
+      visit_control_keyword node, "yield"
+    when :return
+      # [:return, exp]
+      visit_control_keyword node, "return"
+    when :yield0
+      consume_keyword "yield"
+    when :return0
+      consume_keyword "return"
     when :assoc_splat
       visit_splat_inside_hash(node)
     when :dyna_symbol
@@ -408,6 +426,17 @@ class Rufo::NewFormatter
       write " "
       visit value
     end
+  end
+
+  def visit_command(node)
+    # foo arg1, ..., argN
+    #
+    # [:command, name, args]
+    _, name, args = node
+
+    visit name
+    consume_space
+    visit args
   end
 
   def visit_assign(node)
@@ -961,6 +990,18 @@ class Rufo::NewFormatter
     consume_op "**"
     skip_space_or_newline
     visit node[1]
+  end
+
+  def visit_control_keyword(node, keyword)
+    _, exp = node
+
+    consume_keyword keyword
+
+    if exp && !exp.empty?
+      consume_space if space?
+
+      visit_exps to_ary(node[1]), with_lines: false
+    end
   end
 
   def visit_quoted_symbol_literal(node)

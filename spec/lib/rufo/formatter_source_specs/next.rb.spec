@@ -29,5 +29,13 @@ next  1 ,
 
 #~# EXPECTED
 
-next 1,
-     2
+next 1, 2
+
+#~# ORIGINAL next with line length
+#~# line_length: 10
+
+next                      long_identifier
+
+#~# EXPECTED
+
+next long_identifier
