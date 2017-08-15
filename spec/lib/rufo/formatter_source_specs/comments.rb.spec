@@ -262,7 +262,7 @@ foo(
   foo: "foo", # this is important
 )
 
-#~# ORIGINAL skip comments after all arguments
+#~# ORIGINAL comments after all arguments
 
 foo(
   foo:"foo", #thoughts
@@ -276,7 +276,7 @@ foo(
   foo: "foo", # thoughts
 )
 
-#~# ORIGINAL skip comments after some method arguments
+#~# ORIGINAL comments after some method arguments
 
 foo(foo:"foo",#my commentary
   bar:"baz",

@@ -279,7 +279,7 @@ class Rufo::NewFormatter
       when :on_comment
         write_hardline if skipped_empty_line
 
-        handle_comment
+        handle_comment(trailing: !skipped_one_newline)
         move_to_next_token
       else
         debug("skip_space_or_newline: end #{current_token_kind} #{current_token_value}")
@@ -288,12 +288,18 @@ class Rufo::NewFormatter
     end
   end
 
-  def handle_comment
+  def handle_comment(trailing: true)
     value = current_comment_value.rstrip
 
     if @group
-      write_trailing value
-      write_hardline
+      if trailing
+        write_trailing value
+      else
+        write_hardline
+        write value
+      end
+
+      write_breaking
     else
       write " " unless last_is_newline?
       write value
@@ -776,7 +782,7 @@ class Rufo::NewFormatter
   def visit_comma_separated_list(nodes)
     nodes = to_ary(nodes)
 
-    skip_space_or_newline
+    consume_end_of_line(at_prefix: true)
 
     nodes.each_with_index do |exp, i|
       visit exp
@@ -785,8 +791,8 @@ class Rufo::NewFormatter
 
       skip_space
       consume_token :on_comma
-      write_line
       skip_space_or_newline
+      write_line
     end
   end
 
@@ -1204,7 +1210,7 @@ class Rufo::NewFormatter
   end
 
   def write(value)
-    debug "write: #{value.inspect}"
+    # debug "write: #{value.inspect}"
     append(value)
     value = Group.string_value(value)
 
@@ -1215,7 +1221,7 @@ class Rufo::NewFormatter
       @column += value.length
     end
 
-    debug "checking for line length: #{@column.ai}"
+    # debug "checking for line length: #{@column.ai}"
     if @column > @line_length
       write_breaking
     end
@@ -1271,7 +1277,7 @@ class Rufo::NewFormatter
       @group.buffer.concat([group])
     else
       debug "current_column: #{@column.ai}"
-      puts "write_group #{group.ai raw: true, index: false}"
+      debug "write_group #{group.ai raw: true, index: false}"
       group.buffer_string.each_char { |c| write(c) }
     end
   end
