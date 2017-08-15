@@ -90,6 +90,8 @@ module Rufo
         visit node[1]
       when :command
         visit_command(node)
+      when :command_call
+        visit_command_call(node)
       when :@ident
         # [:@ident, "meth", [1, 2]]
         consume_token :on_ident
@@ -444,6 +446,36 @@ module Rufo
       visit name
       consume_space
       visit args
+    end
+
+    def visit_command_call(node)
+      # [:command_call,
+      #   receiver
+      #   :".",
+      #   name
+      #   [:args_add_block, [[:@int, "1", [1, 8]]], block]]
+      _, receiver, dot, name, args = node
+
+      group do
+        visit receiver
+
+        write_softline
+
+        indent do
+          consume_token :on_period
+          visit name
+          write_if_break("(", " ")
+
+          indent do
+            write_softline
+            visit args
+            write_if_break(",", "")
+            write_softline
+          end
+
+          write_if_break(")", "")
+        end
+      end
     end
 
     def visit_assign(node)
