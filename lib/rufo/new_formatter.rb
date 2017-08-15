@@ -84,7 +84,11 @@ class Rufo::NewFormatter
       # [:fcall, [:@ident, "foo", [1, 0]]]
       visit node[1]
     when :@ident
+      # [:@ident, "meth", [1, 2]]
       consume_token :on_ident
+    when :@kw
+      # [:@kw, "nil", [1, 0]]
+      consume_token :on_kw
     when :assign
       visit_assign(node)
     when :opassign
