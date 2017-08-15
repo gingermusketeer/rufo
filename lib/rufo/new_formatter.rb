@@ -1029,14 +1029,14 @@ class Rufo::NewFormatter
     group do
       visit left
 
-      consume_space
+      consume_space unless op == :**
 
       consume_op_or_keyword op
 
       skip_space_or_newline
 
       indent do
-        write_line
+        op == :** ? write_softline : write_line
         visit right
       end
     end
