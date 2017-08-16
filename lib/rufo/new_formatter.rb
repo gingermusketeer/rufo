@@ -231,6 +231,8 @@ module Rufo
         visit_call_with_block(node)
       when :do_block
         visit_do_block(node)
+      when :for
+        visit_for(node)
       when :block_var
         visit_block_arguments(node)
       when :call
@@ -325,7 +327,7 @@ module Rufo
           handle_comment
 
           if current_token_value.end_with?("\n")
-            write_breaking_hardline 
+            write_breaking_hardline
             found_newline = true
           end
 
@@ -439,6 +441,38 @@ module Rufo
           visit body_statement
         end
       end
+    end
+
+    def visit_call_with_block(node)
+      # [:method_add_block, call, block]
+      _, call, block = node
+
+      visit call
+
+      consume_space
+
+      visit block
+    end
+
+    def visit_for(node)
+      # [:for, var, collection, body]
+      _, var, collection, body = node
+
+      consume_keyword "for"
+      consume_space
+
+      visit_comma_separated_list to_ary(var)
+
+      consume_space
+      consume_keyword "in"
+      consume_space
+      visit collection
+      skip_space
+
+      indent_body body
+
+      write_hardline
+      consume_keyword "end"
     end
 
     def visit_string_literal(node)
@@ -644,6 +678,37 @@ module Rufo
       visit body
     end
 
+    def visit_do_block(node)
+      # [:brace_block, args, body]
+      _, args, body = node
+
+      line = @line
+
+      consume_keyword "do"
+
+      consume_block_args args
+
+      if body.first == :bodystmt
+        visit_bodystmt body
+      else
+        write_hardline
+        indent_body body
+        write_indent unless @line == line
+        consume_keyword "end"
+      end
+    end
+
+    def consume_block_args(args)
+      if args
+        consume_one_dynamic_space_or_newline @spaces_around_block_brace
+        # + 1 because of |...|
+        #                ^
+        indent(@column + 1) do
+          visit args
+        end
+      end
+    end
+
     def visit_op_assign(node)
       # target += value
       #
@@ -722,6 +787,8 @@ module Rufo
       else
         write_breaking
         indent_body(body)
+
+        write_hardline unless last_is_newline?
       end
 
       # [:rescue, type, name, body, more_rescue]
@@ -1052,6 +1119,17 @@ module Rufo
 
       return if args.empty?
 
+      visit_call_at_paren(node)
+    end
+
+    def visit_call_at_paren(node)
+      # [:method_add_arg,
+      #   [:fcall, [:@ident, "foo", [1, 0]]],
+      #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+      _, _name, args = node
+
+      return if args.empty?
+
       group(:visit_call_at_paren) do
         consume_token :on_lparen
         write_softline
@@ -1140,12 +1218,13 @@ module Rufo
         visit(args)
       end
 
-      write_breaking_hardline
-
       if body.first == :bodystmt
+        write_breaking_hardline
         visit body
       else
+        write_hardline
         indent_body body
+        write_hardline
         consume_keyword "end"
       end
     end
@@ -1690,6 +1769,18 @@ module Rufo
     end
 
     def indent_body(exps)
+      # A then keyword can appear after a newline after an `if`, `unless`, etc.
+      # Since that's a super weird formatting for if, probably way too obsolete
+      # by now, we just remove it.
+      if keyword?("then")
+        move_to_next_token
+      end
+
+      if keyword?("do")
+        write_hardline
+        move_to_next_token
+      end
+
       indent do
         visit_exps exps #, with_lines: false
       end
