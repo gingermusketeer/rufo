@@ -226,7 +226,11 @@ module Rufo
         if with_lines
           exp_needs_two_lines = needs_two_lines?(exp)
 
-          consume_end_of_line
+          if exp == [:void_stmt]
+            skip_space_or_newline
+          else
+            consume_end_of_line
+          end
 
           # Make sure to put two lines before defs, class and others
           if !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
@@ -968,7 +972,7 @@ module Rufo
       consume_keyword "class"
       consume_space
       visit name
-      write_if_break("", "; ")
+      write_if_break(HARDLINE, "; ")
       visit body
     end
 
