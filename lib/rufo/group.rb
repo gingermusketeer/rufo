@@ -93,7 +93,13 @@ module Rufo
         value.each_char do |char|
           output << char
 
-          column = char == "\n" ? 0 : column + char.length
+          if char == "\n"
+            last_was_newline = true
+            column = 0
+          else
+            last_was_newline = false
+            column += char.length
+          end
 
           if column > max_column
             max_column = column
@@ -115,21 +121,26 @@ module Rufo
 
           tokens.unshift(BREAKING) if group_buffer.force_break
           tokens.unshift(group_buffer.to_s)
+          last_was_newline = false
           next
         end
 
         string_value = self.class.string_value(token, breaking: breaking)
-        current_is_newline = string_value == "\n"
+        is_empty_newline = string_value == "\n"
+        printed_indent = false
 
-        if last_was_newline && !current_is_newline
-          append.call(" " * indent)
+        if (last_was_newline || first_token) && !is_empty_newline
+          level = (indent - column).negative? ? 0 : (indent - column)
+
+          append.call(" " * level)
+          printed_indent = true
         end
 
         case token
         when String
           append.call string_value
         when GroupTrailing
-          append.call " " unless last_was_newline || first_token
+          append.call " " unless printed_indent
           append.call string_value
         when GroupIfBreak
           tokens.unshift(string_value)
@@ -137,7 +148,6 @@ module Rufo
           fail "Unknown token #{token.ai}"
         end
 
-        last_was_newline = current_is_newline
         first_token = false
       end
 
