@@ -377,18 +377,16 @@ module Rufo
       _, body_statement = node
       _, _body, rescue_body, _else_body, ensure_body = body_statement
 
-      group do
-        indent_level = if rescue_body || ensure_body
-                          @column
-                        else
-                          @indent
-                        end
+      indent_level = if rescue_body || ensure_body
+                       @column
+                     else
+                       @indent
+                     end
 
-        indent(indent_level) do
-          consume_keyword "begin"
-          write_if_break(HARDLINE, "; ")
-          visit body_statement
-        end
+      indent(indent_level) do
+        consume_keyword "begin"
+        write_if_break(HARDLINE, "; ")
+        visit body_statement
       end
     end
 
@@ -486,14 +484,12 @@ module Rufo
       # [:assign, target, value]
       _, target, value = node
 
-      group do
-        visit(target)
+      visit(target)
 
-        consume_space
-        consume_op "="
+      consume_space
+      consume_op "="
 
-        visit_assign_value(value)
-      end
+      visit_assign_value(value)
     end
 
     def indentable_value?(value)
@@ -716,7 +712,9 @@ module Rufo
 
         consume_end_of_line
 
-        visit case_when
+        group(:case_when) do
+          visit case_when
+        end
 
         consume_keyword "end"
       end
@@ -730,6 +728,15 @@ module Rufo
       consume_space
 
       visit_comma_separated_list conds
+
+      skip_space_or_newline
+
+      then_keyword = keyword?("then")
+      if then_keyword
+        move_to_next_token
+        write_if_break(HARDLINE, "then ")
+      end
+
       consume_end_of_line
 
       indent_body body
@@ -856,7 +863,7 @@ module Rufo
 
       # If the whole block fits into a single line, format
       # in a single line
-      group do
+      group(:BEGIN_or_END) do
         consume_token :on_lbrace
 
         indent do
@@ -943,21 +950,19 @@ module Rufo
       _, elements = node
 
       check :on_lbracket
-      group do
-        write "["
-        move_to_next_token
+      write "["
+      move_to_next_token
 
-        if elements
-          indent do
-            visit_literal_elements to_ary(elements), inside_array: true
-          end
-        else
-          skip_space_or_newline
+      if elements
+        indent do
+          visit_literal_elements to_ary(elements), inside_array: true
         end
-
-        check :on_rbracket
-        write "]"
+      else
+        skip_space_or_newline
       end
+
+      check :on_rbracket
+      write "]"
 
       move_to_next_token
     end
@@ -1081,19 +1086,17 @@ module Rufo
       # [:binary, left, op, right]
       _, left, op, right = node
 
-      group do
-        visit left
+      visit left
 
-        consume_space unless op == :**
+      consume_space unless op == :**
 
-        consume_op_or_keyword op
+      consume_op_or_keyword op
 
-        skip_space_or_newline
+      skip_space_or_newline
 
-        indent do
-          op == :** ? write_softline : write_line
-          visit right
-        end
+      indent do
+        op == :** ? write_softline : write_line
+        visit right
       end
     end
 
@@ -1203,7 +1206,7 @@ module Rufo
 
     def check(kind)
       if current_token_kind != kind
-        bug "Expected token #{kind}, not #{current_token_kind}\n\n#{@tokens.last(4).reverse.ai}"
+        bug "Expected token #{kind}, not #{current_token_kind}\n\n#{@tokens.last(2).reverse.ai}"
       end
     end
 
