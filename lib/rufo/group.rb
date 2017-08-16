@@ -9,7 +9,7 @@ module Rufo
   BREAKING = :breaking
 
   class Group
-    def self.string_value(token, breaking: false, column: 0)
+    def self.string_value(token, breaking: false)
       case token
       when GroupIfBreak
         breaking ? token.break_value : token.no_break_value
@@ -118,7 +118,7 @@ module Rufo
           next
         end
 
-        string_value = self.class.string_value(token, breaking: breaking, column: column)
+        string_value = self.class.string_value(token, breaking: breaking)
         current_is_newline = string_value == "\n"
 
         if last_was_newline && !current_is_newline
