@@ -229,7 +229,7 @@ module Rufo
           if exp == [:void_stmt]
             skip_space_or_newline
           else
-            consume_end_of_line
+            consume_end_of_line(want_multiline: !is_last)
           end
 
           # Make sure to put two lines before defs, class and others
@@ -299,7 +299,7 @@ module Rufo
       # Output a newline if we didn't do so yet:
       # either we didn't find a newline and we are at the end of a line (and we didn't just pass a semicolon),
       # or we just passed multiple lines (but printed only one)
-      if !at_prefix && (!found_newline || multiple_lines)
+      if !at_prefix && want_multiline && (!found_newline || multiple_lines)
         debug "consume_end_of_line: needs an extra newline"
         write_hardline
       end
@@ -863,7 +863,7 @@ module Rufo
           skip_space_or_newline
           write_hardline
           visit_exps body, with_lines: true
-          skip_space_or_newline
+          consume_end_of_line
         end
 
         consume_token :on_rbrace

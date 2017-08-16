@@ -1,5 +1,4 @@
 #~# ORIGINAL
-#~# double_newline_inside_type: :no
 
 class Foo
 
@@ -14,10 +13,11 @@ class Foo
 end
 
 #~# ORIGINAL
-#~# double_newline_inside_type: :dynamic
 
 class Foo
 
+
+  
 1
 
 end
@@ -25,8 +25,6 @@ end
 #~# EXPECTED
 
 class Foo
-
   1
-
 end
 
