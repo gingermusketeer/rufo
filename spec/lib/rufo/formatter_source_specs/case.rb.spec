@@ -50,6 +50,51 @@ when 1
   2
 end
 
+#~# ORIGINAL when then with multiple statements
+
+case
+  when 1 then 2; 3
+    end
+
+#~# EXPECTED
+
+case
+when 1
+  2
+  3
+end
+
+#~# ORIGINAL if one then needs to break, all should break
+
+case
+when 1 then 2
+when 2 then 3; 4
+end
+
+#~# EXPECTED
+
+case
+when 1
+  2
+when 2
+  3
+  4
+end
+
+#~# ORIGINAL breaks then if the line is too long
+#~# line_length: 10
+
+case
+when 1 then 1000
+end
+
+#~# EXPECTED
+
+case
+when 1
+  1000
+end
+
 #~# ORIGINAL
 
 case 
@@ -80,7 +125,7 @@ when 1
   3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 
