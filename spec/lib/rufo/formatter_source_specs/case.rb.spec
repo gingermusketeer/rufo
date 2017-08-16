@@ -314,7 +314,7 @@ when 1
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 , 
@@ -325,12 +325,26 @@ case
 #~# EXPECTED
 
 case
+when 1, 2
+  3
+end
+
+#~# ORIGINAL breaking when for short line length
+#~# line_length: 5
+
+case
+when 1, 2 then 3
+end
+
+#~# EXPECTED
+
+case
 when 1,
      2
   3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 , 2,  # comm
@@ -341,11 +355,12 @@ case
 #~# EXPECTED
 
 case
-when 1, 2,  # comm
+when 1,
+     2, # comm
      3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 begin 
  case 
@@ -365,7 +380,7 @@ begin
   end
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 1
  when *x , *y 
@@ -379,7 +394,7 @@ when *x, *y
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 1
 when *x then 2
@@ -391,7 +406,7 @@ case 1
 when *x then 2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 1
 when  2  then  3
@@ -400,7 +415,7 @@ end
 #~# EXPECTED
 
 case 1
-when  2  then  3
+when 2 then 3
 end
 
 #~# ORIGINAL skip 

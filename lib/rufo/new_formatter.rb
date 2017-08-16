@@ -741,27 +741,34 @@ module Rufo
         consume_keyword "when"
         consume_space
 
-        visit_comma_separated_list conds
-
-        skip_space_or_newline
-
-        then_keyword = keyword?("then")
-        if then_keyword
-          move_to_next_token
-          write_if_break(HARDLINE, " then ")
-        else
-          write_breaking_hardline
+        indent(@column) do
+          group(:when_conditions) do
+            visit_comma_separated_list conds
+          end
         end
-
-        skip_space_or_newline
 
         indent do
-          body = body_without_void_statements(body)
-          visit_exps body, allow_trailing_newline: false, with_lines: body.count > 1
           skip_space_or_newline
-        end
 
-        write_hardline
+          then_keyword = keyword?("then")
+          if then_keyword
+            move_to_next_token
+            write_if_break(HARDLINE, " then ")
+          else
+            write_breaking_hardline
+          end
+
+          skip_space_or_newline
+
+          body = body_without_void_statements(body)
+
+          if !body.empty?
+            visit_exps body, allow_trailing_newline: false
+            skip_space_or_newline
+
+            write_hardline
+          end
+        end
 
         if next_exp
           if next_exp.first == :else
