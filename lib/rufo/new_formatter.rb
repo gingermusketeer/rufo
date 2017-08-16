@@ -30,10 +30,6 @@ module Rufo
 
       # the current group
       @group = nil
-      # dangerous groups
-      # these are groups that you open and don't necessarily close inline with
-      # the structure of the s-expressions
-      @dangerous_groups = []
     end
 
     def format
@@ -90,6 +86,8 @@ module Rufo
         visit node[1]
       when :command
         visit_command(node)
+      when :command_call
+        visit_command_call(node)
       when :@ident
         # [:@ident, "meth", [1, 2]]
         consume_token :on_ident
@@ -217,14 +215,22 @@ module Rufo
       consume_end_of_line(at_prefix: true)
 
       exps.each_with_index do |exp, i|
-        visit exp
+        expression_context do
+          indent(@indent) do
+            group(:exp) { visit exp }
+          end
+        end
 
         is_last = last?(i, exps)
 
         if with_lines
           exp_needs_two_lines = needs_two_lines?(exp)
 
-          consume_end_of_line
+          if exp == [:void_stmt]
+            skip_space_or_newline
+          else
+            consume_end_of_line
+          end
 
           # Make sure to put two lines before defs, class and others
           if !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
@@ -446,6 +452,36 @@ module Rufo
       visit args
     end
 
+    def visit_command_call(node)
+      # [:command_call,
+      #   receiver
+      #   :".",
+      #   name
+      #   [:args_add_block, [[:@int, "1", [1, 8]]], block]]
+      _, receiver, dot, name, args = node
+
+      @expression_context.chained_call_count += 1
+
+      visit receiver
+
+      write_softline
+
+      indent do
+        consume_token :on_period
+        visit name
+        write_if_break("(", " ")
+
+        indent do
+          write_softline
+          visit_exps to_ary(args), with_lines: false
+          write_if_break(",", "")
+          write_softline
+        end
+
+        write_if_break(")", "")
+      end
+    end
+
     def visit_assign(node)
       # [:assign, target, value]
       _, target, value = node
@@ -489,38 +525,36 @@ module Rufo
 
       params = params[1] if params[0] == :paren
 
-      group do
-        consume_keyword "def"
-        consume_space
+      consume_keyword "def"
+      consume_space
 
-        visit name
+      visit name
 
+      skip_space
+
+      if current_token_kind == :on_lparen
+        move_to_next_token
         skip_space
-
-        if current_token_kind == :on_lparen
-          move_to_next_token
-          skip_space
-        end
-
-        if !empty_params?(params)
-          group do
-            write "("
-            write_softline
-
-            indent do
-              visit params
-            end
-
-            write_softline
-            write ")"
-            move_to_next_token
-          end
-        end
-
-        write_if_break(HARDLINE, "; ")
-
-        visit body
       end
+
+      if !empty_params?(params)
+        group do
+          write "("
+          write_softline
+
+          indent do
+            visit params
+          end
+
+          write_softline
+          write ")"
+          move_to_next_token
+        end
+      end
+
+      write_if_break(HARDLINE, "; ")
+
+      visit body
     end
 
     def visit_op_assign(node)
@@ -575,21 +609,19 @@ module Rufo
       # [:paren, exps]
       _, exps = node
 
-      group do
-        consume_token :on_lparen
-        skip_space_or_newline
-        write_softline
+      consume_token :on_lparen
+      skip_space_or_newline
+      write_softline
 
-        if exps
-          indent do
-            exps = to_ary(exps)
-            visit_exps exps, with_lines: !exps.one?
-          end
+      if exps
+        indent do
+          exps = to_ary(exps)
+          visit_exps exps, with_lines: !exps.one?
         end
-
-        skip_space_or_newline
-        consume_token :on_rparen
       end
+
+      skip_space_or_newline
+      consume_token :on_rparen
     end
 
     def visit_bodystmt(node)
@@ -750,20 +782,9 @@ module Rufo
       #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
       _, name, args = node
 
-      group do
-        visit name
+      visit name
 
-        visit_call_at_paren(node)
-      end
-    end
-
-    def visit_call_at_paren(node)
-      # [:method_add_arg,
-      #   [:fcall, [:@ident, "foo", [1, 0]]],
-      #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
-      _, _name, args = node
-
-      group do
+      group(:visit_call_at_paren) do
         consume_token :on_lparen
         write_softline
 
@@ -790,6 +811,7 @@ module Rufo
         write_softline unless last_is_newline?
 
         consume_token :on_rparen
+        set_indent(@expression_context.dot_indent - @indent_size)
       end
     end
 
@@ -797,23 +819,24 @@ module Rufo
       # [:call, obj, :".", name]
       _, obj, text, name = node
 
-      group_owner = !@group
-      dangerous_open_group! if group_owner
+      @expression_context.chained_call_count += 1
+      obj_is_method_call = (obj[0] == :call || obj[0] == :method_add_arg)
+
+      needs_softline = obj_is_method_call || (@expression_context.chained_call_count > 1)
 
       visit obj
+      skip_space_or_newline
 
-      indent do
+      if needs_softline
+        set_indent(@expression_context.dot_indent)
         write_softline
-
-        skip_space_or_newline
-        consume_token :on_period
-        skip_space_or_newline
-
-        # :call means it's .()
-        visit name if name != :call
       end
 
-      dangerous_close_group! if group_owner
+      consume_token :on_period
+      skip_space_or_newline
+
+      # :call means it's .()
+      visit name if name != :call
     end
 
     def visit_BEGIN(node)
@@ -946,13 +969,11 @@ module Rufo
       #   [:bodystmt, body, nil, nil, nil]]
       _, name, superclass, body = node
 
-      group do
-        consume_keyword "class"
-        consume_space
-        visit name
-        write_if_break(HARDLINE, "; ")
-        visit body
-      end
+      consume_keyword "class"
+      consume_space
+      visit name
+      write_if_break(HARDLINE, "; ")
+      visit body
     end
 
     def visit_literal_elements(elements, inside_hash: false, inside_array: false)
@@ -1160,11 +1181,13 @@ module Rufo
       # [:args_add_block, args, block]
       _, args, block_arg = node
 
-      if !args.empty? && args[0] == :args_add_star
-        # arg1, ..., *star
-        visit args
-      else
-        group { visit_comma_separated_list args }
+      expression_context do
+        if !args.empty? && args[0] == :args_add_star
+          # arg1, ..., *star
+          visit args
+        else
+          visit_comma_separated_list args
+        end
       end
     end
 
@@ -1249,7 +1272,8 @@ module Rufo
 
     def last_is_newline?
       if @group
-        @group.buffer_string[-1] == "\n"
+        @group.process
+        @group.to_s[-1] == "\n"
       else
         @output[-1] == "\n"
       end
@@ -1321,8 +1345,7 @@ module Rufo
 
     def append(value)
       if @group
-        fail "no newlines" if value == "\n"
-        @group.buffer << value
+        @group << value
       else
         @output << value
       end
@@ -1389,10 +1412,11 @@ module Rufo
 
     def write_group(group)
       if @group
-        @group.buffer.concat([group])
+        @group.concat([group])
       else
+        group.process
+        group.to_s.each_char { |c| write(c) }
         debug "write_group #{group.ai raw: true, index: false}"
-        group.buffer_string.each_char { |c| write(c) }
       end
     end
 
@@ -1430,26 +1454,32 @@ module Rufo
       end
     end
 
-    def group
+    class ExpressionContext
+      def initialize(dot_indent:)
+        @chained_call_count = 0
+        @dot_indent = dot_indent
+      end
+
+      attr_accessor :chained_call_count
+      attr_reader :dot_indent
+    end
+
+    def expression_context
+      old_expression_context = @expression_context
+      @expression_context = ExpressionContext.new(dot_indent: @indent + @indent_size)
+      yield
+      @expression_context = old_expression_context
+    end
+
+    def group(name = nil)
       old_group = @group
-      @group = Rufo::Group.new(indent: @indent, line_length: @line_length)
+      @group = Rufo::Group.new(name, indent: @indent, line_length: @line_length)
+      name ||= @group.name
       debug "OPEN GROUP #{@group.object_id}"
       yield
       group_to_write = @group
+      bug "tried to close a mismatched group (open: #{@group.name}, given: #{name})" unless @group.name == name
       @group = old_group
-      debug "WRITE GROUP #{group_to_write.object_id}"
-      write_group group_to_write
-    end
-
-    def dangerous_open_group!
-      @dangerous_groups.unshift(@group)
-      @group = Group.new(indent: @indent, line_length: @line_length)
-      debug "OPEN GROUP #{@group.object_id}"
-    end
-
-    def dangerous_close_group!
-      group_to_write = @group
-      @group = @dangerous_groups.shift
       debug "WRITE GROUP #{group_to_write.object_id}"
       write_group group_to_write
     end
@@ -1468,8 +1498,6 @@ module Rufo
         write_hardline
       end
     end
-
-    DEBUG = false
 
     def debug(msg)
       if DEBUG

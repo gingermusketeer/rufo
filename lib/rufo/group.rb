@@ -3,28 +3,20 @@ module Rufo
   GroupIfBreak = Struct.new(:break_value, :no_break_value)
   GroupTrailing = Struct.new(:value)
 
-  LINE = :line
-  SOFTLINE = :softline
-  HARDLINE = :hardline
+  LINE = GroupIfBreak.new("\n", " ")
+  SOFTLINE = GroupIfBreak.new("\n", "")
+  HARDLINE = "\n"
   BREAKING = :breaking
 
   class Group
     def self.string_value(token, breaking: false)
       case token
-      when LINE
-        breaking ? "\n" : " "
-      when SOFTLINE
-        breaking ? "\n" : ""
-      when HARDLINE
-        "\n"
       when GroupIfBreak
         breaking ? token.break_value : token.no_break_value
       when GroupTrailing
         token.value
       when String
         token
-      when Group
-        token.buffer_string
       when BREAKING
         ""
       else
@@ -32,58 +24,97 @@ module Rufo
       end
     end
 
-    def initialize(indent:, line_length:)
+    def initialize(name, indent:, line_length:)
+      @name = name || object_id
       @indent = indent
       @buffer = []
+      @buffer_string = nil
       @line_length = line_length
-      @breaking = false
     end
 
-    attr_accessor :buffer
-    attr_reader :breaking
+    attr_reader :name, :indent
 
-    def buffer_string
-      output, needs_break = build_buffer_string(breaking: false)
+    DEFAULT_BREAKING_BUFFER = Struct.new(:max_column).new(Float::INFINITY)
+
+    def process(column: indent, allow_break: true)
+      breaking_buffer = DEFAULT_BREAKING_BUFFER
+
+      non_breaking_buffer = process_buffer(column: column, breaking: false)
+
+      force_break = non_breaking_buffer.force_break
+      too_long = non_breaking_buffer.max_column > @line_length
+      needs_break = force_break || (allow_break && too_long)
 
       if needs_break
-        @breaking = true
-        build_buffer_string(breaking: true).first
-      else
-        output
+        breaking_buffer = process_buffer(column: column, breaking: true)
       end
+
+      buffer = if force_break
+                 breaking_buffer
+               elsif needs_break && (breaking_buffer.max_column < non_breaking_buffer.max_column)
+                 breaking_buffer
+               else
+                 non_breaking_buffer
+               end
+
+      @buffer_string = buffer.to_s
+      buffer
+    end
+
+    def <<(value)
+      buffer << value
+    end
+
+    def concat(value)
+      buffer.concat(value)
+    end
+
+    def to_s
+      fail "you need to call process first" unless @buffer_string
+
+      @buffer_string
     end
 
     private
+
+    attr_accessor :buffer
     
-    def build_buffer_string(breaking:)
+    def process_buffer(column:, breaking:)
+      debug "process_buffer: #{name} #{object_id}"
       indent = @indent
-      column = @indent
-      needs_break = breaking
+      force_break = breaking
+      max_column = column
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
       first_token = true
 
       append = lambda do |value|
-        output << value
-        column += value.chomp.length
+        value.each_char do |char|
+          output << char
 
-        if column > @line_length && !needs_break
-          needs_break = true
+          column = char == "\n" ? 0 : column + char.length
+
+          if column > max_column
+            max_column = column
+          end
         end
 
-        if value.end_with?("\n")
-          column = indent
-        end
+        debug "#{name}.append(#{value.ai})\tcolumn: #{column.ai}"
       end
 
       while token = tokens.shift
         if token.is_a?(GroupIndent)
           indent = token.indent
-          column = indent if last_was_newline
           next
         elsif token == BREAKING
-          needs_break = true
+          force_break = true
+          next
+        elsif token.is_a?(Group)
+          group_buffer = token.process(column: column, allow_break: breaking)
+
+          tokens.unshift(BREAKING) if group_buffer.force_break
+          tokens.unshift(group_buffer.to_s)
           next
         end
 
@@ -95,11 +126,8 @@ module Rufo
         end
 
         case token
-        when String, LINE, SOFTLINE, HARDLINE
+        when String
           append.call string_value
-        when Group
-          append.call string_value
-          needs_break = true if token.breaking
         when GroupTrailing
           append.call " " unless last_was_newline || first_token
           append.call string_value
@@ -113,7 +141,21 @@ module Rufo
         first_token = false
       end
 
-      [output, needs_break]
+      ProcessedBuffer.new(output, max_column: max_column, force_break: force_break)
+    end
+
+    def debug(message)
+      puts(message) if DEBUG
+    end
+
+    class ProcessedBuffer
+      def initialize(to_s, max_column:, force_break:)
+        @to_s = to_s
+        @max_column = max_column
+        @force_break = force_break
+      end
+
+      attr_reader :to_s, :max_column, :force_break
     end
   end
 end
