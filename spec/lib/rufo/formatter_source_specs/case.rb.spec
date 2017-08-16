@@ -1,4 +1,4 @@
-#~# ORIGINAL 
+#~# ORIGINAL basic then
 
 case 
  when 1 then 2 
@@ -10,7 +10,7 @@ case
 when 1 then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip multiple when then
 
 case 
  when 1 then 2 
@@ -24,7 +24,7 @@ when 1 then 2
 when 3 then 4
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then 2 else 3 
@@ -37,7 +37,7 @@ when 1 then 2
 else 3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 ; 2 
@@ -49,7 +49,7 @@ case
 when 1; 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 
@@ -63,7 +63,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 
@@ -79,7 +79,7 @@ when 1
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 
@@ -99,7 +99,7 @@ when 4
   5
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 123 
  when 1 
@@ -113,7 +113,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case  # foo 
  when 1 
@@ -127,7 +127,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1  # comment 
@@ -141,7 +141,7 @@ when 1 # comment
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then 2 else 
@@ -156,7 +156,7 @@ else
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then 2 else ; 
@@ -171,7 +171,7 @@ else
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then 2 else  # comm 
@@ -186,7 +186,7 @@ else # comm
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 begin 
  case 
@@ -212,7 +212,7 @@ begin
   end
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then 
@@ -226,7 +226,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 then ; 
@@ -240,7 +240,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 ; 
@@ -254,7 +254,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 , 
@@ -270,7 +270,7 @@ when 1,
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 
  when 1 , 2,  # comm
@@ -285,7 +285,7 @@ when 1, 2,  # comm
      3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 begin 
  case 
@@ -305,7 +305,7 @@ begin
   end
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 1
  when *x , *y 
@@ -319,7 +319,7 @@ when *x, *y
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 1
 when *x then 2
@@ -331,7 +331,7 @@ case 1
 when *x then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 1
 when  2  then  3
@@ -343,7 +343,7 @@ case 1
 when  2  then  3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 1
 when 2 then # comment
@@ -355,7 +355,7 @@ case 1
 when 2 then # comment
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL skip 
 
 case 1
  when 2 then 3

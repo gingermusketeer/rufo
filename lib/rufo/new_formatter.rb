@@ -712,10 +712,9 @@ module Rufo
 
         consume_end_of_line
 
-        group(:case_when) do
-          visit case_when
-        end
+        visit case_when
 
+        write_hardline
         consume_keyword "end"
       end
     end
@@ -724,22 +723,34 @@ module Rufo
       # [:when, conds, body, next_exp]
       _, conds, body, next_exp = node
 
-      consume_keyword "when"
-      consume_space
+      group(:case_when) do
+        consume_keyword "when"
+        consume_space
 
-      visit_comma_separated_list conds
+        visit_comma_separated_list conds
 
-      skip_space_or_newline
+        skip_space_or_newline
 
-      then_keyword = keyword?("then")
-      if then_keyword
-        move_to_next_token
-        write_if_break(HARDLINE, "then ")
+        then_keyword = keyword?("then")
+        if then_keyword
+          move_to_next_token
+          write_if_break(HARDLINE, " then ")
+        else
+          write_hardline
+        end
+
+        skip_space_or_newline
+
+        # if body is only one statement, potentially allow for then
+        if body.one?
+          indent do
+            visit body.first
+          end
+          skip_space_or_newline
+        else
+          indent_body body
+        end
       end
-
-      consume_end_of_line
-
-      indent_body body
     end
 
     def visit_mrhs_new_from_args(node)
@@ -1206,7 +1217,7 @@ module Rufo
 
     def check(kind)
       if current_token_kind != kind
-        bug "Expected token #{kind}, not #{current_token_kind}\n\n#{@tokens.last(2).reverse.ai}"
+        bug "Expected token #{kind}, not #{current_token_kind}\n\n#{@tokens.last(4).reverse.ai}"
       end
     end
 
