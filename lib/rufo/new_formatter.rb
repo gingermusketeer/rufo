@@ -714,7 +714,6 @@ module Rufo
 
         visit case_when
 
-        write_hardline
         consume_keyword "end"
       end
     end
@@ -749,6 +748,21 @@ module Rufo
           skip_space_or_newline
         else
           indent_body body
+        end
+      end
+
+      write_hardline
+
+      if next_exp
+        if next_exp.first == :else
+          # [:else, body]
+          _, body = next_exp
+
+          consume_keyword "else"
+          consume_space
+          visit_exps body
+        else
+          visit next_exp
         end
       end
     end

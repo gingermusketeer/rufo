@@ -10,7 +10,7 @@ case
 when 1 then 2
 end
 
-#~# ORIGINAL skip multiple when then
+#~# ORIGINAL multiple when then
 
 case 
  when 1 then 2 
@@ -24,7 +24,7 @@ when 1 then 2
 when 3 then 4
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL when then else
 
 case 
  when 1 then 2 else 3 
@@ -37,7 +37,7 @@ when 1 then 2
 else 3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 ; 2 
@@ -46,10 +46,11 @@ case
 #~# EXPECTED
 
 case
-when 1; 2
+when 1
+  2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 
@@ -63,7 +64,7 @@ when 1
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 
