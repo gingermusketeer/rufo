@@ -711,6 +711,11 @@ module Rufo
       indent(@column) do
         consume_keyword "case"
 
+        if cond
+          consume_space
+          visit cond
+        end
+
         consume_end_of_line
 
         visit case_when

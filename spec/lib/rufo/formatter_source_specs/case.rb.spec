@@ -145,7 +145,7 @@ when 4
   5
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL case with cond
 
 case 123 
  when 1 
@@ -159,7 +159,7 @@ when 1
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case  # foo 
  when 1 
@@ -168,12 +168,12 @@ case  # foo
 
 #~# EXPECTED
 
-case  # foo
+case # foo
 when 1
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1  # comment 
@@ -187,7 +187,7 @@ when 1 # comment
   2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 then 2 else 
@@ -198,11 +198,10 @@ case
 
 case
 when 1 then 2
-else
-  3
+else 3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL skip
 
 case 
  when 1 then 2 else ; 
@@ -213,8 +212,7 @@ case
 
 case
 when 1 then 2
-else
-  3
+else 3
 end
 
 #~# ORIGINAL skip 
