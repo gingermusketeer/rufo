@@ -106,7 +106,6 @@ module Rufo
       while token = tokens.shift
         if token.is_a?(GroupIndent)
           indent = token.indent
-          column = indent if last_was_newline
           next
         elsif token == BREAKING
           force_break = true

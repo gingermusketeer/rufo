@@ -13,17 +13,18 @@ def assert_source_specs(source_specs)
 
     File.foreach(source_specs).with_index do |line, index|
       case
-      when line =~ /^#~# ORIGINAL ?(skip ?)?(.*)$/
+      when line =~ /^#~# ORIGINAL ?(skip ?)?(\:focus ?)?(.*)$/
         # save old test
         tests.push current_test if current_test
 
         # start a new test
 
         skip = !!$~[1]
-        name = $~[2].strip
+        focus = !!$~[2]
+        name = $~[3].strip
         name = "unnamed test" if name.empty?
 
-        current_test = {name: name, line: index + 1, options: {}, original: "",skip: skip}
+        current_test = {name: name, line: index + 1, options: {}, original: "",skip: skip,focus: focus}
       when line =~ /^#~# EXPECTED$/
         current_test[:expected] = ""
       when line =~ /^#~# (.+)$/
@@ -36,7 +37,7 @@ def assert_source_specs(source_specs)
     end
 
     (tests + [current_test]).each do |test|
-      it "formats #{test[:name]} (line: #{test[:line]})" do
+      it "formats #{test[:name]} (line: #{test[:line]})", focus: test[:focus] do
         skip if test[:skip]
         error = nil
 
