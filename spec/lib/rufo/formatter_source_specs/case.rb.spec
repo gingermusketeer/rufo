@@ -95,6 +95,23 @@ when 1
   1000
 end
 
+#~# ORIGINAL breaks else if the line is too long
+#~# line_length: 10
+
+case
+when 1 then 1000
+else 2000
+end
+
+#~# EXPECTED
+
+case
+when 1
+  1000
+else
+  2000
+end
+
 #~# ORIGINAL
 
 case 
@@ -201,7 +218,7 @@ when 1 then 2
 else 3
 end
 
-#~# ORIGINAL skip
+#~# ORIGINAL
 
 case 
  when 1 then 2 else ; 
@@ -215,7 +232,7 @@ when 1 then 2
 else 3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 then 2 else  # comm 
@@ -225,12 +242,13 @@ case
 #~# EXPECTED
 
 case
-when 1 then 2
+when 1
+  2
 else # comm
   3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 begin 
  case 

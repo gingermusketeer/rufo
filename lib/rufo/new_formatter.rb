@@ -747,6 +747,7 @@ module Rufo
         skip_space_or_newline
 
         indent do
+          body = body_without_void_statements(body)
           visit_exps body, allow_trailing_newline: false, with_lines: body.count > 1
           skip_space_or_newline
         end
@@ -759,8 +760,12 @@ module Rufo
             _, body = next_exp
 
             consume_keyword "else"
-            consume_space
-            visit_exps body, with_lines: body.count > 1
+            skip_space_or_newline
+            write_line
+            body = body_without_void_statements(body)
+            indent do
+              visit_exps body, with_lines: body.count > 1
+            end
             skip_space_or_newline
             write_hardline
           else
@@ -1536,6 +1541,10 @@ module Rufo
         write line.chomp
         write_breaking_hardline
       end
+    end
+
+    def body_without_void_statements(body)
+      body.reject { |e| e.first == :void_stmt }
     end
 
     def debug(msg)

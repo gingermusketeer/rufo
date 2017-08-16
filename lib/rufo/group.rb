@@ -84,7 +84,7 @@ module Rufo
       indent = @indent
       force_break = breaking
       max_column = column
-      last_was_newline = false
+      last_kind = nil
       output = "".dup
       tokens = buffer.dup
       first_token = true
@@ -94,10 +94,10 @@ module Rufo
           output << char
 
           if char == "\n"
-            last_was_newline = true
+            last_kind = :newline
             column = 0
           else
-            last_was_newline = false
+            last_kind = :char
             column += char.length
           end
 
@@ -121,15 +121,23 @@ module Rufo
 
           tokens.unshift(BREAKING) if group_buffer.force_break
           tokens.unshift(group_buffer.to_s)
-          last_was_newline = false
+          last_kind = :group
           next
         end
 
         string_value = self.class.string_value(token, breaking: breaking)
         is_empty_newline = string_value == "\n"
+
+        if last_kind == :trailing && !is_empty_newline
+          tokens.unshift(token)
+          tokens.unshift(BREAKING)
+          tokens.unshift(HARDLINE)
+          next
+        end
+
         printed_indent = false
 
-        if (last_was_newline || first_token) && !is_empty_newline
+        if (last_kind == :newline || first_token) && !is_empty_newline
           level = (indent - column).negative? ? 0 : (indent - column)
 
           append.call(" " * level)
@@ -142,6 +150,7 @@ module Rufo
         when GroupTrailing
           append.call " " unless printed_indent
           append.call string_value
+          last_kind = :trailing
         when GroupIfBreak
           tokens.unshift(string_value)
         else
