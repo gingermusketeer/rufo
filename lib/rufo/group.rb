@@ -34,15 +34,31 @@ module Rufo
 
     attr_reader :name, :indent
 
-    def process(column: indent, allow_break: true)
-      output, needs_break = build_buffer_string(column: column, breaking: false)
+    DEFAULT_BREAKING_BUFFER = Struct.new(:max_column).new(Float::INFINITY)
 
-      if needs_break && allow_break
-        output, needs_break = build_buffer_string(column: column, breaking: true)
+    def process(column: indent, allow_break: true)
+      breaking_buffer = DEFAULT_BREAKING_BUFFER
+
+      non_breaking_buffer = process_buffer(column: column, breaking: false)
+
+      force_break = non_breaking_buffer.force_break
+      too_long = non_breaking_buffer.max_column > @line_length
+      needs_break = force_break || (allow_break && too_long)
+
+      if needs_break
+        breaking_buffer = process_buffer(column: column, breaking: true)
       end
 
-      @buffer_string = output
-      [output, needs_break]
+      buffer = if force_break
+                 breaking_buffer
+               elsif needs_break && (breaking_buffer.max_column < non_breaking_buffer.max_column)
+                 breaking_buffer
+               else
+                 non_breaking_buffer
+               end
+
+      @buffer_string = buffer.to_s
+      buffer
     end
 
     def <<(value)
@@ -63,10 +79,11 @@ module Rufo
 
     attr_accessor :buffer
     
-    def build_buffer_string(column:, breaking:)
-      debug "build_buffer_string: #{name}"
+    def process_buffer(column:, breaking:)
+      debug "process_buffer: #{name} #{object_id}"
       indent = @indent
-      needs_break = breaking
+      force_break = breaking
+      max_column = column
       last_was_newline = false
       output = "".dup
       tokens = buffer.dup
@@ -75,20 +92,15 @@ module Rufo
       append = lambda do |value|
         value.each_char do |char|
           output << char
-          column += char.length
 
-          if column > @line_length && !needs_break
-            needs_break = true
-            # short circuit the loop
-            tokens = []
-          end
+          column = char == "\n" ? 0 : column + char.length
 
-          if char == "\n"
-            column = 0
+          if column > max_column
+            max_column = column
           end
         end
 
-        debug "#{name}.append(#{value.ai})\tcolumn: #{column.ai}\tneeds break: #{needs_break.ai}"
+        debug "#{name}.append(#{value.ai})\tcolumn: #{column.ai}"
       end
 
       while token = tokens.shift
@@ -97,13 +109,13 @@ module Rufo
           column = indent if last_was_newline
           next
         elsif token == BREAKING
-          needs_break = true
+          force_break = true
           next
         elsif token.is_a?(Group)
-          group_output, group_needs_break = token.process(column: column, allow_break: breaking)
+          group_buffer = token.process(column: column, allow_break: breaking)
 
-          tokens.unshift(BREAKING) if group_needs_break
-          tokens.unshift(group_output)
+          tokens.unshift(BREAKING) if group_buffer.force_break
+          tokens.unshift(group_buffer.to_s)
           next
         end
 
@@ -130,11 +142,21 @@ module Rufo
         first_token = false
       end
 
-      [output, needs_break]
+      ProcessedBuffer.new(output, max_column: max_column, force_break: force_break)
     end
 
     def debug(message)
       puts(message) if DEBUG
+    end
+
+    class ProcessedBuffer
+      def initialize(to_s, max_column:, force_break:)
+        @to_s = to_s
+        @max_column = max_column
+        @force_break = force_break
+      end
+
+      attr_reader :to_s, :max_column, :force_break
     end
   end
 end

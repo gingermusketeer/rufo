@@ -2,7 +2,8 @@ require 'spec_helper'
 
 module Rufo
   RSpec.describe Group do
-    BREAK_NOTE = GroupIfBreak.new("BREAKING", "")
+    BREAK_NOTE_TEXT = "\n*\n"
+    BREAK_NOTE = GroupIfBreak.new(BREAK_NOTE_TEXT, "")
 
     it "breaks at line length 10" do
       subject = described_class.new(:group, indent: 0, line_length: 10)
@@ -12,7 +13,7 @@ module Rufo
       subject << "darkness"
       subject.process
 
-      expect(subject.to_s).to include "BREAKING"
+      expect(subject.to_s).to include BREAK_NOTE_TEXT
     end
 
     it "breaks exactly at line length" do
@@ -21,12 +22,12 @@ module Rufo
       subject << BREAK_NOTE
 
       subject.process
-      expect(subject.to_s).to_not include "BREAKING"
+      expect(subject.to_s).to_not include BREAK_NOTE_TEXT
 
       subject << "1"
       subject.process
 
-      expect(subject.to_s).to include "BREAKING"
+      expect(subject.to_s).to include BREAK_NOTE_TEXT
     end
 
     it "breaks at appropriate points for nested groups" do
@@ -46,25 +47,44 @@ module Rufo
 
       outer.process
 
-      expect(inner.to_s).to_not include "BREAKING"
-      expect(outer.to_s).to include "BREAKING"
+      expect(inner.to_s).to_not include BREAK_NOTE_TEXT
+      expect(outer.to_s).to include BREAK_NOTE_TEXT
     end
 
     it "if an inner group needs to break, so does the outer" do
+      inner = described_class.new(:inner, indent: 0, line_length: 3)
+      outer = described_class.new(:outer, indent: 0, line_length: 3)
+
+      inner << "1234"
+      inner << BREAK_NOTE
+      inner << "2"
+
+      outer << inner
+
+      outer << "10"
+      outer << BREAK_NOTE
+
+      outer.process
+
+      expect(outer.to_s).to eq "1234#{BREAK_NOTE_TEXT}210#{BREAK_NOTE_TEXT}"
+    end
+
+    it "if an inner group forces a break, outer breaks" do
       inner = described_class.new(:inner, indent: 0, line_length: 100)
       outer = described_class.new(:outer, indent: 0, line_length: 100)
 
-      inner << "12"
+      inner << "1"
       inner << BREAKING
       inner << BREAK_NOTE
+      inner << "2"
       outer << inner
       outer << "10"
       outer << BREAK_NOTE
 
       outer.process
 
-      expect(outer.to_s).to include "10BREAKING"
-      expect(outer.to_s).to include "12BREAKING"
+      expect(outer.to_s).to include "1#{BREAK_NOTE_TEXT}2"
+      expect(outer.to_s).to include "1#{BREAK_NOTE_TEXT}210#{BREAK_NOTE_TEXT}"
     end
 
     it "breaks outer groups first" do
@@ -103,8 +123,22 @@ module Rufo
 
       outer.process
 
-      expect(outer.to_s.lines.count).to eq 3
-      expect(outer.to_s).to include "BREAKING"
+      expect(outer.to_s.lines.count).to eq 5
+      expect(outer.to_s).to include BREAK_NOTE_TEXT
+    end
+
+    it "only breaks if breaking actually uses less column" do
+      group = described_class.new(:group, indent: 0, line_length: 1)
+
+      group << "x"
+      group << SOFTLINE
+      group << GroupIndent.new(2)
+      group << "."
+      group << "y"
+
+      group.process
+
+      expect(group.to_s).to eq "x.y"
     end
 
     describe "indent" do
