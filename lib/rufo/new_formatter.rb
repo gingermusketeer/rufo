@@ -386,8 +386,14 @@ module Rufo
 
       indent(indent_level) do
         consume_keyword "begin"
-        write_if_break(HARDLINE, "; ")
-        visit body_statement
+
+        if body_statement_empty?(body_statement)
+          write "; "
+          visit body_statement
+        else
+          write_breaking_hardline
+          visit body_statement
+        end
       end
     end
 
@@ -433,6 +439,11 @@ module Rufo
         write_line
         indent do
           visit(value)
+        end
+      elsif %w(case).include?(current_token_value)
+        write " "
+        indent(@column) do
+          visit value
         end
       else
         write " "
@@ -708,20 +719,18 @@ module Rufo
       # [:case, cond, case_when]
       _, cond, case_when = node
 
-      indent(@column) do
-        consume_keyword "case"
+      consume_keyword "case"
 
-        if cond
-          consume_space
-          visit cond
-        end
-
-        consume_end_of_line
-
-        visit case_when
-
-        consume_keyword "end"
+      if cond
+        consume_space
+        visit cond
       end
+
+      consume_end_of_line
+
+      visit case_when
+
+      consume_keyword "end"
     end
 
     def visit_when(node)
@@ -1545,6 +1554,12 @@ module Rufo
 
     def body_without_void_statements(body)
       body.reject { |e| e.first == :void_stmt }
+    end
+
+    def body_statement_empty?(body_statement)
+      _, body, rescue_body, else_body, ensure_body = body_statement
+
+      body_without_void_statements(body).empty? && !rescue_body && !else_body && !ensure_body
     end
 
     def debug(msg)

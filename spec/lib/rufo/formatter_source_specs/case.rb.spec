@@ -274,7 +274,7 @@ begin
   end
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 then 
@@ -284,11 +284,10 @@ case
 #~# EXPECTED
 
 case
-when 1
-  2
+when 1 then 2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 then ; 
@@ -298,11 +297,10 @@ case
 #~# EXPECTED
 
 case
-when 1
-  2
+when 1 then 2
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 
  when 1 ; 
