@@ -1501,8 +1501,6 @@ module Rufo
       end
     end
 
-    DEBUG = false
-
     def debug(msg)
       if DEBUG
         puts msg

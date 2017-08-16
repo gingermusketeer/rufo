@@ -8,6 +8,8 @@ module Rufo
   def self.format(code, **options)
     Formatter.format(code, **options)
   end
+
+  DEBUG = false
 end
 
 require_relative "rufo/backport"
