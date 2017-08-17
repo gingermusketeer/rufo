@@ -184,7 +184,22 @@ end
 
 def meth(**options); end
 
-#~# ORIGINAL skip commented args
+#~# ORIGINAL commented arg
+
+def meth(
+      # this is important
+      arg)
+end
+
+#~# EXPECTED
+
+def meth(
+  # this is important
+  arg
+)
+end
+
+#~# ORIGINAL commented args
 
 def meth(
       # this is important
@@ -203,7 +218,8 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip all together now
+#~# ORIGINAL all together now
+#~# line_length: 110
 
 def meth(
       arg1,
@@ -217,9 +233,9 @@ end
 
 #~# EXPECTED
 
-def meth(arg1, arg2, arg3, *rest, last, required:, not_required: 7, **options); end
+def meth(arg1, arg2, arg3 = 7, *rest, last, required:, not_required: 7, **options); end
 
-#~# ORIGINAL skip all together now with line length
+#~# ORIGINAL all together now with break
 
 def meth(
       arg1,

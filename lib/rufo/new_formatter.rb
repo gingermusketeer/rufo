@@ -607,9 +607,10 @@ module Rufo
       if !empty_params?(params)
         group(:method_arguments) do
           write "("
-          write_softline
 
           indent do
+            skip_space_or_newline
+            write_softline
             visit params
           end
 
@@ -1092,15 +1093,21 @@ module Rufo
       # [:params, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg]
       _, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
 
-      skip_space_or_newline
-
       needs_comma = false
 
       if pre_rest_params
         visit_comma_separated_list pre_rest_params
+
+        skip_space_or_newline
+        needs_comma = true
       end
 
       if args_with_default
+        if needs_comma
+          consume_token :on_comma
+          write_line
+        end
+
         visit_comma_separated_list(args_with_default) do |arg, default|
           visit arg
           consume_space
@@ -1108,9 +1115,19 @@ module Rufo
           consume_space
           visit default
         end
+
+        skip_space_or_newline
+        needs_comma = true
       end
 
       if rest_param
+        if needs_comma
+          consume_token :on_comma
+          write_line
+        end
+
+        skip_space_or_newline
+
         # [:rest_param, [:@ident, "x", [1, 15]]]
         _, rest = rest_param
         consume_op "*"
@@ -1126,21 +1143,42 @@ module Rufo
           consume_token :on_comma
           write_line
         end
+
         visit_comma_separated_list post_rest_params
+
+        skip_space_or_newline
+        needs_comma = true
       end
 
       if label_params
+        if needs_comma
+          consume_token :on_comma
+          write_line
+        end
+
         # [[label, value], ...]
         visit_comma_separated_list(label_params) do |label, value|
           # [:@label, "b:", [1, 20]]
           # [:var_ref, [:kw, "nil", [2, 25]]]
           visit label
-          consume_space
-          visit value
+
+          if value
+            consume_space
+            visit value
+          end
         end
+
+        skip_space_or_newline
+        needs_comma = true
       end
 
       if double_star_param
+        if needs_comma
+          consume_token :on_comma
+          write_line
+        end
+
+        skip_space_or_newline
         consume_op "**"
         skip_space_or_newline
 
