@@ -30,10 +30,14 @@ module Rufo
 
       # the current group
       @group = nil
+
+      # heredocs that are waiting to be flushed
+      @heredocs = []
     end
 
     def format
       visit @sexp
+      flush_heredocs
       consume_end
     end
 
@@ -132,6 +136,8 @@ module Rufo
         visit_if(node)
       when :unless
         visit_unless(node)
+      when :if_mod
+        visit_suffix(node, "if")
       when :case
         visit_case(node)
       when :when
@@ -426,6 +432,12 @@ module Rufo
       case current_token_kind
       when :on_backtick
         consume_token :on_backtick
+      when :on_heredoc_beg
+        @heredocs.unshift(node)
+        consume_token :on_heredoc_beg
+        # Accumulate heredoc: we'll write it once
+        # we find a newline.
+        return
       else
         consume_token :on_tstring_beg
       end
@@ -437,11 +449,16 @@ module Rufo
       # [:string_literal, [:string_content, exps]]
       inner = node[1]
       inner = inner[1..-1] unless node[0] == :xstring_literal
+
       visit_exps(inner, with_lines: false)
 
       case current_token_kind
       when :on_backtick
         consume_token :on_backtick
+      when :on_heredoc_end
+        write current_token_value
+        move_to_next_token
+        @tokens << [[0, 0], :on_ignored_nl, "\n"]
       else
         consume_token :on_tstring_end
       end
@@ -785,6 +802,25 @@ module Rufo
       end
     end
 
+    def visit_suffix(node, suffix)
+      # then if cond
+      # then unless cond
+      # exp rescue handler
+      #
+      # [:if_mod, cond, body]
+      _, body, cond = node
+
+      if suffix != "rescue"
+        body, cond = cond, body
+      end
+
+      visit body
+      consume_space
+      consume_keyword(suffix)
+      consume_space
+      visit cond
+    end
+
     def visit_case(node)
       # [:case, cond, case_when]
       _, cond, case_when = node
@@ -1036,7 +1072,7 @@ module Rufo
       _, elements = node
 
       check :on_lbrace
-      group do
+      group(:hash) do
         write "{"
         move_to_next_token
 
@@ -1455,6 +1491,26 @@ module Rufo
 
     def move_to_next_token
       @tokens.pop
+
+      flush_heredocs if (newline? || comment?)
+    end
+
+    def flush_heredocs
+      first_heredoc = true
+      while heredoc = @heredocs.shift
+        @current_heredoc = heredoc
+        if first_heredoc
+          write_hardline
+          write_avoid_break
+        end
+
+        indent(0) do
+          visit_string_literal_end(heredoc)
+        end
+
+        @current_heredoc = nil
+        first_heredoc = false
+      end
     end
 
     def next_token
@@ -1521,7 +1577,13 @@ module Rufo
     def write_breaking
       fail "Can only write BREAKING inside a group" unless @group
 
-      write BREAKING
+      @group.wants_break!
+    end
+
+    def write_avoid_break
+      fail "Can only write avoid break inside a group" unless @group
+
+      @group.avoid_break!
     end
 
     def write_line

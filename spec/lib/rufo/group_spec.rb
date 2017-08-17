@@ -74,7 +74,7 @@ module Rufo
       outer = described_class.new(:outer, indent: 0, line_length: 100)
 
       inner << "1"
-      inner << BREAKING
+      inner.wants_break!
       inner << BREAK_NOTE
       inner << "2"
       outer << inner
@@ -141,6 +141,41 @@ module Rufo
       expect(group.to_s).to eq "x.y"
     end
 
+    it "can avoid breaks for heredocs" do
+      group = described_class.new(:group, indent: 0, line_length: 1)
+
+      group << "x("
+      group << SOFTLINE
+      group << GroupIndent.new(2)
+      group << "<<-EOF"
+      group.avoid_break!
+      group << GroupIfBreak.new(",", "")
+      group << SOFTLINE
+      group << GroupIndent.new(0)
+      group << ")"
+      group << "\nheredoc\n  body\n"
+      group << "EOF"
+
+      group.process
+
+      expect(group.to_s).to eq "x(<<-EOF)\nheredoc\n  body\nEOF"
+    end
+
+    it "avoid overrides force" do
+      group = described_class.new(:group, indent: 0, line_length: 100)
+
+      group << BREAK_NOTE
+      group.wants_break!
+      group.process
+
+      expect(group.to_s).to include BREAK_NOTE_TEXT
+      
+      group.avoid_break!
+      group.process
+
+      expect(group.to_s).to_not include BREAK_NOTE_TEXT
+    end
+
     describe "trailing" do
       it "adds a space if it's appended" do
         group = described_class.new(:group, indent: 0, line_length: 10)
@@ -180,7 +215,7 @@ module Rufo
 
         group << GroupIndent.new(2)
         group << "\n"
-        group << BREAKING
+        group.wants_break!
         group << GroupTrailing.new("# comment")
 
         group.process

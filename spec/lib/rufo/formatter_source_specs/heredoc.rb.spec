@@ -29,19 +29,21 @@ EOF
 #~# ORIGINAL heredoc_multiline_2
 
 foo 1 , <<-EOF1 , 2 , <<-EOF2 , 3
+  hdoc1
   foo
-  bar
 EOF1
-  baz
+  hdoc2
+  foo
 EOF2
 
 #~# EXPECTED
 
 foo 1, <<-EOF1, 2, <<-EOF2, 3
+  hdoc1
   foo
-  bar
 EOF1
-  baz
+  hdoc2
+  foo
 EOF2
 
 #~# ORIGINAL heredoc_multiline_3
@@ -140,7 +142,8 @@ EOF
 
 # comment
 
-#~# ORIGINAL heredoc_as_strange_method_argument
+#~# ORIGINAL heredoc as method argument should avoid break
+#~# line_length: 1
 
 foo(<<-EOF)
   bar
@@ -176,6 +179,19 @@ EOF
   bar
 EOF
 
+#~# ORIGINAL heredoc with operator and short line length
+#~# line_length: 1
+
+<<-EOF % 1
+  bar
+EOF
+
+#~# EXPECTED
+
+<<-EOF % 1
+  bar
+EOF
+
 #~# ORIGINAL heredoc_as_hash_value
 
 {1 => <<EOF,
@@ -185,7 +201,36 @@ EOF
 
 #~# EXPECTED
 
+{ 1 => <<EOF,
+text
+EOF
+   2 => 3 }
+
+#~# ORIGINAL heredoc as hash value with line length
+#~# line_length: 1
+
 {1 => <<EOF,
 text
 EOF
  2 => 3}
+
+#~# EXPECTED
+
+{ 1 => <<EOF,
+text
+EOF
+   2 => 3 }
+
+#~# ORIGINAL assign variable to heredoc
+
+x = <<EOF . strip_heredoc
+  this is my
+  value
+EOF
+
+#~# EXPECTED
+
+x = <<EOF.strip_heredoc
+  this is my
+  value
+EOF
