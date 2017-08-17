@@ -49,7 +49,7 @@ module Rufo
 
     def visit(node)
       unless node.is_a?(Array)
-        bug "Expected array node, but found: #{node} at #{current_token}"
+        bug "Expected array node, but found: #{node.ai} at #{current_token}"
       end
 
       case node.first
@@ -113,6 +113,9 @@ module Rufo
       when :@ivar
         # [:@ivar, "@foo", [1, 0]]
         consume_token :on_ivar
+      when :kwrest_param
+        # ruby-head type
+        visit(node[1]) if node[1]
       when :const_path_ref
         visit_path(node)
       when :const_path_field
@@ -605,17 +608,22 @@ module Rufo
       end
 
       if !empty_params?(params)
-        group do
+        group(:method_arguments) do
           write "("
-          write_softline
 
           indent do
+            skip_space_or_newline
+            write_softline
             visit params
           end
 
           write_softline
-          write ")"
-          move_to_next_token
+
+          if current_token_kind == :on_rparen
+            consume_token :on_rparen
+          else
+            write ")"
+          end
         end
       end
 
@@ -752,7 +760,6 @@ module Rufo
       _, exp = node
 
       consume_keyword "defined?"
-
 
       has_space = space?
       has_paren = current_token_kind == :on_lparen
@@ -1087,20 +1094,93 @@ module Rufo
 
     def visit_params(node)
       # [:params, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg]
-      _, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
+      _, *params = node #pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
 
-      visit_comma_separated_list pre_rest_params
+      if pre_rest_params = params.shift
+        visit_comma_separated_list pre_rest_params, trailing_comma: params.compact.any?
+
+        skip_space_or_newline
+      end
+
+      if args_with_default = params.shift
+        visit_comma_separated_list(args_with_default, trailing_comma: params.compact.any?) do |arg, default|
+          visit arg
+          consume_space
+          consume_op "="
+          consume_space
+          visit default
+        end
+
+        skip_space_or_newline
+      end
+
+      if rest_param = params.shift
+        skip_space_or_newline
+
+        # [:rest_param, [:@ident, "x", [1, 15]]]
+        _, rest = rest_param
+        consume_op "*"
+        skip_space_or_newline
+        visit rest if rest
+
+        if params.compact.any?
+          skip_space
+          consume_token :on_comma
+          skip_space_or_newline
+          write_line
+        end
+      end
+
+      if post_rest_params = params.shift
+        visit_comma_separated_list post_rest_params, trailing_comma: params.compact.any?
+
+        skip_space_or_newline
+      end
+
+      if label_params = params.shift
+        # [[label, value], ...]
+        visit_comma_separated_list(label_params, trailing_comma: params.compact.any?) do |label, value|
+          # [:@label, "b:", [1, 20]]
+          # [:var_ref, [:kw, "nil", [2, 25]]]
+          visit label
+
+          if value
+            consume_space
+            visit value
+          end
+        end
+
+        skip_space_or_newline
+      end
+
+      if double_star_param = params.shift
+        skip_space_or_newline
+        consume_op "**"
+        skip_space_or_newline
+
+        # A nameless double star comes as an... Integer? :-S
+        visit double_star_param if double_star_param.is_a?(Array)
+      end
+
+      bug "unexpected params" if params.any?
+
+      skip_space_or_newline
     end
 
-    def visit_comma_separated_list(nodes)
+    # trailing_comma: if we know this list will need a trailing comma
+    def visit_comma_separated_list(nodes, trailing_comma: false)
       nodes = to_ary(nodes)
 
       consume_end_of_line(at_prefix: true)
 
       nodes.each_with_index do |exp, i|
-        visit exp
+        if block_given?
+          yield exp
+        else
+          visit exp
+        end
 
-        next if last?(i, nodes)
+        next if last?(i, nodes) && !trailing_comma
 
         skip_space
         consume_token :on_comma
