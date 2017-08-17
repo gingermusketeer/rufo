@@ -1499,10 +1499,15 @@ module Rufo
       first_heredoc = true
       while heredoc = @heredocs.shift
         @current_heredoc = heredoc
-        write_hardline if first_heredoc
+        if first_heredoc
+          write_hardline
+          write_avoid_break
+        end
+
         indent(0) do
           visit_string_literal_end(heredoc)
         end
+
         @current_heredoc = nil
         first_heredoc = false
       end
@@ -1572,7 +1577,13 @@ module Rufo
     def write_breaking
       fail "Can only write BREAKING inside a group" unless @group
 
-      write BREAKING
+      @group.wants_break!
+    end
+
+    def write_avoid_break
+      fail "Can only write avoid break inside a group" unless @group
+
+      @group.avoid_break!
     end
 
     def write_line

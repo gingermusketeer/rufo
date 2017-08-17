@@ -6,7 +6,6 @@ module Rufo
   LINE = GroupIfBreak.new("\n", " ")
   SOFTLINE = GroupIfBreak.new("\n", "")
   HARDLINE = "\n"
-  BREAKING = :breaking
 
   class Group
     def self.string_value(token, breaking: false)
@@ -17,8 +16,6 @@ module Rufo
         token.value
       when String
         token
-      when BREAKING
-        ""
       else
         fail "Unknown token #{token.ai}"
       end
@@ -30,6 +27,8 @@ module Rufo
       @buffer = []
       @buffer_string = nil
       @line_length = line_length
+      @wants_break = false
+      @avoid_break = false
     end
 
     attr_reader :name, :indent
@@ -39,17 +38,27 @@ module Rufo
     def process(column: indent, allow_break: true, last_kind: :newline)
       breaking_buffer = DEFAULT_BREAKING_BUFFER
 
-      non_breaking_buffer = process_buffer(column: column, breaking: false, last_kind: last_kind)
+      allow_break = allow_break && !@avoid_break
 
-      force_break = non_breaking_buffer.force_break
+      non_breaking_buffer = process_buffer(
+        column: column,
+        breaking: @wants_break && !@avoid_break,
+        last_kind: last_kind,
+      )
+
+      wants_break = non_breaking_buffer.wants_break && !@avoid_break
       too_long = non_breaking_buffer.max_column > @line_length
-      needs_break = force_break || (allow_break && too_long)
+      needs_break = wants_break || (allow_break && too_long)
 
       if needs_break
-        breaking_buffer = process_buffer(column: column, breaking: true, last_kind: last_kind)
+        breaking_buffer = process_buffer(
+          column: column,
+          breaking: true,
+          last_kind: last_kind,
+        )
       end
 
-      buffer = if force_break
+      buffer = if wants_break
                  breaking_buffer
                elsif needs_break && (breaking_buffer.max_column < non_breaking_buffer.max_column)
                  breaking_buffer
@@ -59,6 +68,18 @@ module Rufo
 
       @buffer_string = buffer.to_s
       buffer
+    end
+
+    def wants_break!
+      @wants_break = true
+    end
+
+    def avoid_break!
+      @avoid_break = true
+    end
+
+    def breaking?
+      @wants_break
     end
 
     def <<(value)
@@ -82,7 +103,7 @@ module Rufo
     def process_buffer(column:, breaking:, last_kind:)
       debug "process_buffer: #{name} #{object_id} last_kind: #{last_kind.ai}"
       indent = @indent
-      force_break = breaking
+      wants_break = breaking
       max_column = column
       output = "".dup
       tokens = buffer.dup
@@ -112,13 +133,10 @@ module Rufo
         if token.is_a?(GroupIndent)
           indent = token.indent
           next
-        elsif token == BREAKING
-          force_break = true
-          next
         elsif token.is_a?(Group)
           group_buffer = token.process(column: column, allow_break: breaking, last_kind: last_kind)
 
-          force_break = true if group_buffer.force_break
+          wants_break = true if group_buffer.wants_break
           append.call group_buffer.to_s
           last_kind = group_buffer.last_kind
           next
@@ -129,7 +147,7 @@ module Rufo
 
         if last_kind == :trailing && !is_empty_newline
           tokens.unshift(token)
-          tokens.unshift(BREAKING)
+          wants_break = true
           tokens.unshift(HARDLINE)
           next
         end
@@ -162,7 +180,7 @@ module Rufo
       ProcessedBuffer.new(
         output,
         max_column: max_column,
-        force_break: force_break,
+        wants_break: wants_break,
         last_kind: last_kind,
       )
     end
@@ -176,14 +194,14 @@ module Rufo
     end
 
     class ProcessedBuffer
-      def initialize(to_s, max_column:, force_break:, last_kind:)
+      def initialize(to_s, max_column:, wants_break:, last_kind:)
         @to_s = to_s
         @max_column = max_column
-        @force_break = force_break
+        @wants_break = wants_break
         @last_kind = last_kind
       end
 
-      attr_reader :to_s, :max_column, :force_break, :last_kind
+      attr_reader :to_s, :max_column, :wants_break, :last_kind
     end
   end
 end

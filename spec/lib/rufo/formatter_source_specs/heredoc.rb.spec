@@ -142,7 +142,8 @@ EOF
 
 # comment
 
-#~# ORIGINAL heredoc_as_strange_method_argument
+#~# ORIGINAL heredoc as method argument should avoid break
+#~# line_length: 1
 
 foo(<<-EOF)
   bar
@@ -167,6 +168,19 @@ foo <<-EOF.bar if 1
 EOF
 
 #~# ORIGINAL heredoc_with_percent
+
+<<-EOF % 1
+  bar
+EOF
+
+#~# EXPECTED
+
+<<-EOF % 1
+  bar
+EOF
+
+#~# ORIGINAL heredoc with operator and short line length
+#~# line_length: 1
 
 <<-EOF % 1
   bar
@@ -206,3 +220,17 @@ EOF
 text
 EOF
    2 => 3 }
+
+#~# ORIGINAL assign variable to heredoc
+
+x = <<EOF . strip_heredoc
+  this is my
+  value
+EOF
+
+#~# EXPECTED
+
+x = <<EOF.strip_heredoc
+  this is my
+  value
+EOF
