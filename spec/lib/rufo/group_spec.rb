@@ -222,6 +222,22 @@ module Rufo
 
         expect(group.to_s).to eq "# comment\nhello"
       end
+
+      it "writes a newline if it's the last of a group" do
+        group = described_class.new(:group, indent: 0, line_length: 80)
+        inner = described_class.new(:inner, indent: 0, line_length: 80)
+
+        group << "hi"
+
+        inner << GroupTrailing.new("# comment")
+        group << inner
+
+        group << "hi"
+
+        group.process
+
+        expect(group.to_s).to eq "hi # comment\nhi"
+      end
     end
 
     describe "indent" do

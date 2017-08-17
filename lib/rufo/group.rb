@@ -36,17 +36,17 @@ module Rufo
 
     DEFAULT_BREAKING_BUFFER = Struct.new(:max_column).new(Float::INFINITY)
 
-    def process(column: indent, allow_break: true)
+    def process(column: indent, allow_break: true, last_kind: :newline)
       breaking_buffer = DEFAULT_BREAKING_BUFFER
 
-      non_breaking_buffer = process_buffer(column: column, breaking: false)
+      non_breaking_buffer = process_buffer(column: column, breaking: false, last_kind: last_kind)
 
       force_break = non_breaking_buffer.force_break
       too_long = non_breaking_buffer.max_column > @line_length
       needs_break = force_break || (allow_break && too_long)
 
       if needs_break
-        breaking_buffer = process_buffer(column: column, breaking: true)
+        breaking_buffer = process_buffer(column: column, breaking: true, last_kind: last_kind)
       end
 
       buffer = if force_break
@@ -79,12 +79,11 @@ module Rufo
 
     attr_accessor :buffer
     
-    def process_buffer(column:, breaking:)
-      debug "process_buffer: #{name} #{object_id}"
+    def process_buffer(column:, breaking:, last_kind:)
+      debug "process_buffer: #{name} #{object_id} last_kind: #{last_kind.ai}"
       indent = @indent
       force_break = breaking
       max_column = column
-      last_kind = nil
       output = "".dup
       tokens = buffer.dup
       first_token = true
@@ -117,11 +116,11 @@ module Rufo
           force_break = true
           next
         elsif token.is_a?(Group)
-          group_buffer = token.process(column: column, allow_break: breaking)
+          group_buffer = token.process(column: column, allow_break: breaking, last_kind: last_kind)
 
-          tokens.unshift(BREAKING) if group_buffer.force_break
-          tokens.unshift(group_buffer.to_s)
-          last_kind = :group
+          force_break = true if group_buffer.force_break
+          append.call group_buffer.to_s
+          last_kind = group_buffer.last_kind
           next
         end
 
@@ -137,7 +136,7 @@ module Rufo
 
         printed_indent = false
 
-        if (last_kind == :newline || first_token) && !is_empty_newline
+        if last_kind == :newline && !is_empty_newline
           level = (indent - column).negative? ? 0 : (indent - column)
 
           append.call(" " * level)
@@ -160,7 +159,12 @@ module Rufo
         first_token = false
       end
 
-      ProcessedBuffer.new(output, max_column: max_column, force_break: force_break)
+      ProcessedBuffer.new(
+        output,
+        max_column: max_column,
+        force_break: force_break,
+        last_kind: last_kind,
+      )
     end
 
     def debug(message)
@@ -168,13 +172,14 @@ module Rufo
     end
 
     class ProcessedBuffer
-      def initialize(to_s, max_column:, force_break:)
+      def initialize(to_s, max_column:, force_break:, last_kind:)
         @to_s = to_s
         @max_column = max_column
         @force_break = force_break
+        @last_kind = last_kind
       end
 
-      attr_reader :to_s, :max_column, :force_break
+      attr_reader :to_s, :max_column, :force_break, :last_kind
     end
   end
 end

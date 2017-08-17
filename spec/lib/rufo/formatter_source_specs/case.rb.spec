@@ -418,7 +418,7 @@ case 1
 when 2 then 3
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 1
 when 2 then # comment
@@ -427,10 +427,11 @@ end
 #~# EXPECTED
 
 case 1
-when 2 then # comment
+when 2
+  # comment
 end
 
-#~# ORIGINAL skip 
+#~# ORIGINAL
 
 case 1
  when 2 then 3
@@ -442,6 +443,5 @@ end
 
 case 1
 when 2 then 3
-else
-  4
+else 4
 end
