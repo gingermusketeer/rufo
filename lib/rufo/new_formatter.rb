@@ -76,6 +76,15 @@ module Rufo
       when :const_ref
         # [:const_ref, [:@const, "Foo", [1, 8]]]
         visit node[1]
+      when :top_const_ref
+        # [:top_const_ref, [:@const, "Foo", [1, 2]]]
+        consume_op "::"
+        skip_space_or_newline
+        visit node[1]
+      when :top_const_field
+        # [:top_const_field, [:@const, "Foo", [1, 2]]]
+        consume_op "::"
+        visit node[1]
       when :string_embexpr
         visit_string_interpolation(node)
       when :vcall
@@ -91,9 +100,19 @@ module Rufo
       when :@ident
         # [:@ident, "meth", [1, 2]]
         consume_token :on_ident
+      when :@cvar
+        # [:@cvar, "@@foo", [1, 0]]
+        consume_token :on_cvar
       when :@kw
         # [:@kw, "nil", [1, 0]]
         consume_token :on_kw
+      when :@ivar
+        # [:@ivar, "@foo", [1, 0]]
+        consume_token :on_ivar
+      when :const_path_ref
+        visit_path(node)
+      when :const_path_field
+        visit_path(node)
       when :assign
         visit_assign(node)
       when :opassign
@@ -143,6 +162,8 @@ module Rufo
       when :return
         # [:return, exp]
         visit_control_keyword node, "return"
+      when :defined
+        visit_defined(node)
       when :yield0
         consume_keyword "yield"
       when :return0
@@ -435,6 +456,23 @@ module Rufo
       consume_token :on_embexpr_end
     end
 
+    def visit_path(node)
+      # Foo::Bar
+      #
+      # [:const_path_ref,
+      #   [:var_ref, [:@const, "Foo", [1, 0]]],
+      #   [:@const, "Bar", [1, 5]]]
+      _, *pieces = node
+
+      pieces.each_with_index do |piece, i|
+        visit piece
+        unless last?(i, pieces)
+          consume_op "::"
+          skip_space_or_newline
+        end
+      end
+    end
+
     def visit_assign_value(value)
       skip_space_or_newline
 
@@ -686,6 +724,33 @@ module Rufo
     def visit_rescue_types(node)
       group do
         visit_exps to_ary(node), with_lines: false
+      end
+    end
+
+    def visit_defined(node)
+      # [:defined, exp]
+      _, exp = node
+
+      consume_keyword "defined?"
+
+
+      has_space = space?
+      has_paren = current_token_kind == :on_lparen
+
+      skip_space_or_newline
+
+      if has_paren && !has_space
+        consume_token :on_lparen
+        skip_space_or_newline
+      else
+        write " "
+      end
+
+      visit exp
+
+      if has_paren && !has_space
+        skip_space_or_newline
+        consume_token :on_rparen
       end
     end
 

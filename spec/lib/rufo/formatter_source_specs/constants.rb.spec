@@ -1,4 +1,4 @@
-#~# ORIGINAL 
+#~# ORIGINAL
 
 Foo
 
@@ -6,7 +6,7 @@ Foo
 
 Foo
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 Foo::Bar::Baz
 
@@ -14,7 +14,7 @@ Foo::Bar::Baz
 
 Foo::Bar::Baz
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 Foo::Bar::Baz
 
@@ -22,7 +22,7 @@ Foo::Bar::Baz
 
 Foo::Bar::Baz
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 Foo:: Bar:: Baz
 
@@ -30,7 +30,7 @@ Foo:: Bar:: Baz
 
 Foo::Bar::Baz
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 Foo:: 
 Bar
@@ -39,7 +39,7 @@ Bar
 
 Foo::Bar
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 ::Foo
 
@@ -47,7 +47,7 @@ Foo::Bar
 
 ::Foo
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 ::Foo::Bar
 
@@ -55,17 +55,18 @@ Foo::Bar
 
 ::Foo::Bar
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
-::Foo = 1
+::Foo =            1
 
 #~# EXPECTED
 
 ::Foo = 1
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
-::Foo::Bar = 1
+::Foo::Bar \
+= 1
 
 #~# EXPECTED
 
