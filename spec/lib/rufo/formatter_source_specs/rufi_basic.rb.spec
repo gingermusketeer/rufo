@@ -323,7 +323,7 @@ def big_method(
 )
   'ok'
 end
- 
+
 #~# ORIGINAL statements inside a method
 
 def my_method

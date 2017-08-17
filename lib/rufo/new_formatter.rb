@@ -231,6 +231,8 @@ module Rufo
         visit_call_with_block(node)
       when :do_block
         visit_do_block(node)
+      when :for
+        visit_for(node)
       when :block_var
         visit_block_arguments(node)
       when :call
@@ -271,7 +273,7 @@ module Rufo
         if with_lines
           needs_two_lines = !is_last && needs_two_lines?(exps[i + 1])
 
-          if exp == [:void_stmt] || (is_last && !allow_trailing_newline)
+          if exp == [[:void_stmt]] || (is_last && !allow_trailing_newline)
             skip_space_or_newline
           else
             consume_end_of_line(want_multiline: !is_last && !needs_two_lines)
@@ -325,7 +327,7 @@ module Rufo
           handle_comment
 
           if current_token_value.end_with?("\n")
-            write_breaking_hardline 
+            write_breaking_hardline
             found_newline = true
           end
 
@@ -387,6 +389,20 @@ module Rufo
       end
     end
 
+    def consume_comment
+      loop do
+        case current_token_kind
+        when :on_sp
+          move_to_next_token
+        when :on_comment
+          handle_comment
+          move_to_next_token
+        else
+          break
+        end
+      end
+    end
+
     def handle_comment(trailing: true)
       value = current_comment_value.rstrip
 
@@ -431,14 +447,48 @@ module Rufo
       indent(indent_level) do
         consume_keyword "begin"
 
+        consume_comment
+
         if body_statement_empty?(body_statement)
-          write "; "
+          write_if_break(HARDLINE, "; ")
           visit body_statement
         else
           write_breaking_hardline
           visit body_statement
         end
       end
+    end
+
+    def visit_call_with_block(node)
+      # [:method_add_block, call, block]
+      _, call, block = node
+
+      visit call
+
+      consume_space
+
+      visit block
+    end
+
+    def visit_for(node)
+      # [:for, var, collection, body]
+      _, var, collection, body = node
+
+      consume_keyword "for"
+      consume_space
+
+      visit_comma_separated_list to_ary(var)
+
+      consume_space
+      consume_keyword "in"
+      consume_space
+      visit collection
+      skip_space
+
+      indent_body body
+
+      write_hardline
+      consume_keyword "end"
     end
 
     def visit_string_literal(node)
@@ -644,6 +694,27 @@ module Rufo
       visit body
     end
 
+    def visit_do_block(node)
+      # [:brace_block, args, body]
+      _, args, body = node
+
+      line = @line
+
+      consume_keyword "do"
+
+      visit args
+
+      if body.first == :bodystmt
+        write_breaking_hardline
+        visit_bodystmt body
+      else
+        write_hardline
+        indent_body body
+        write_hardline
+        consume_keyword "end"
+      end
+    end
+
     def visit_op_assign(node)
       # target += value
       #
@@ -718,10 +789,12 @@ module Rufo
       body = body_without_void_statements(body)
 
       if body.empty?
-        skip_space_or_newline
+        indent { skip_space_or_newline }
       else
         write_breaking
         indent_body(body)
+
+        write_hardline unless last_is_newline?
       end
 
       # [:rescue, type, name, body, more_rescue]
@@ -1049,8 +1122,14 @@ module Rufo
       _, name, args = node
 
       visit name
+      visit_call_at_paren(node) unless args.empty?
+    end
 
-      return if args.empty?
+    def visit_call_at_paren(node)
+      # [:method_add_arg,
+      #   [:fcall, [:@ident, "foo", [1, 0]]],
+      #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
+      _, _name, args = node
 
       group(:visit_call_at_paren) do
         consume_token :on_lparen
@@ -1140,12 +1219,13 @@ module Rufo
         visit(args)
       end
 
-      write_breaking_hardline
-
       if body.first == :bodystmt
+        write_breaking_hardline
         visit body
       else
+        write_hardline
         indent_body body
+        write_hardline
         consume_keyword "end"
       end
     end
@@ -1690,6 +1770,18 @@ module Rufo
     end
 
     def indent_body(exps)
+      # A then keyword can appear after a newline after an `if`, `unless`, etc.
+      # Since that's a super weird formatting for if, probably way too obsolete
+      # by now, we just remove it.
+      if keyword?("then")
+        move_to_next_token
+      end
+
+      if keyword?("do")
+        write_breaking_hardline
+        move_to_next_token
+      end
+
       indent do
         visit_exps exps #, with_lines: false
       end
