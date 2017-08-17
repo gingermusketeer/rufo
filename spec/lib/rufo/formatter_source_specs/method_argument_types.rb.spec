@@ -43,7 +43,7 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip args with defaults
+#~# ORIGINAL args with defaults
 
 def meth    x = nil
 end
@@ -52,7 +52,7 @@ end
 
 def meth(x = nil); end
 
-#~# ORIGINAL skip args with defaults and line length
+#~# ORIGINAL args with defaults and line length
 #~# line_length: 1
 
 def meth(    x = nil)

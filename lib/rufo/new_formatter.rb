@@ -1089,7 +1089,20 @@ module Rufo
       # [:params, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg]
       _, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
 
-      visit_comma_separated_list pre_rest_params
+
+      if pre_rest_params
+        visit_comma_separated_list pre_rest_params
+      end
+
+      if args_with_default
+        visit_comma_separated_list(args_with_default) do |arg, default|
+          visit arg
+          consume_space
+          consume_op "="
+          consume_space
+          visit default
+        end
+      end
     end
 
     def visit_comma_separated_list(nodes)
@@ -1098,7 +1111,11 @@ module Rufo
       consume_end_of_line(at_prefix: true)
 
       nodes.each_with_index do |exp, i|
-        visit exp
+        if block_given?
+          yield exp
+        else
+          visit exp
+        end
 
         next if last?(i, nodes)
 
