@@ -137,7 +137,7 @@ module Rufo
         printed_indent = false
 
         if last_kind == :newline && !is_empty_newline
-          level = (indent - column).negative? ? 0 : (indent - column)
+          level = not_less_than_zero(indent - column)
 
           append.call(" " * level)
           printed_indent = true
@@ -169,6 +169,10 @@ module Rufo
 
     def debug(message)
       puts(message) if DEBUG
+    end
+
+    def not_less_than_zero(number)
+      number > 0 ? number : 0
     end
 
     class ProcessedBuffer
