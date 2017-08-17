@@ -269,12 +269,11 @@ module Rufo
         end
 
         is_last = last?(i, exps)
-        is_void = exp == [:void_stmt]
 
         if with_lines
           needs_two_lines = !is_last && needs_two_lines?(exps[i + 1])
 
-          if is_void || (is_last && !allow_trailing_newline)
+          if exp == [[:void_stmt]] || (is_last && !allow_trailing_newline)
             skip_space_or_newline
           else
             consume_end_of_line(want_multiline: !is_last && !needs_two_lines)
@@ -703,7 +702,7 @@ module Rufo
 
       consume_keyword "do"
 
-      consume_block_args args
+      visit args
 
       if body.first == :bodystmt
         write_breaking_hardline
@@ -713,17 +712,6 @@ module Rufo
         indent_body body
         write_hardline
         consume_keyword "end"
-      end
-    end
-
-    def consume_block_args(args)
-      if args
-        consume_one_dynamic_space_or_newline @spaces_around_block_brace
-        # + 1 because of |...|
-        #                ^
-        indent(@column + 1) do
-          visit args
-        end
       end
     end
 
