@@ -91,6 +91,9 @@ module Rufo
       when :@ident
         # [:@ident, "meth", [1, 2]]
         consume_token :on_ident
+      when :@cvar
+        # [:@cvar, "@@foo", [1, 0]]
+        consume_token :on_cvar
       when :@kw
         # [:@kw, "nil", [1, 0]]
         consume_token :on_kw
