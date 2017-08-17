@@ -1116,10 +1116,7 @@ module Rufo
       _, name, args = node
 
       visit name
-
-      return if args.empty?
-
-      visit_call_at_paren(node)
+      visit_call_at_paren(node) unless args.empty?
     end
 
     def visit_call_at_paren(node)
