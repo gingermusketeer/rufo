@@ -136,6 +136,8 @@ module Rufo
         visit_if(node)
       when :unless
         visit_unless(node)
+      when :if_mod
+        visit_suffix(node, "if")
       when :case
         visit_case(node)
       when :when
@@ -454,7 +456,8 @@ module Rufo
       when :on_backtick
         consume_token :on_backtick
       when :on_heredoc_end
-        consume_token :on_heredoc_end
+        write current_token_value
+        move_to_next_token
         @tokens << [[0, 0], :on_ignored_nl, "\n"]
       else
         consume_token :on_tstring_end
@@ -799,6 +802,25 @@ module Rufo
       end
     end
 
+    def visit_suffix(node, suffix)
+      # then if cond
+      # then unless cond
+      # exp rescue handler
+      #
+      # [:if_mod, cond, body]
+      _, body, cond = node
+
+      if suffix != "rescue"
+        body, cond = cond, body
+      end
+
+      visit body
+      consume_space
+      consume_keyword(suffix)
+      consume_space
+      visit cond
+    end
+
     def visit_case(node)
       # [:case, cond, case_when]
       _, cond, case_when = node
@@ -1050,7 +1072,7 @@ module Rufo
       _, elements = node
 
       check :on_lbrace
-      group do
+      group(:hash) do
         write "{"
         move_to_next_token
 
@@ -1478,7 +1500,9 @@ module Rufo
       while heredoc = @heredocs.shift
         @current_heredoc = heredoc
         write_hardline if first_heredoc
-        visit_string_literal_end(heredoc)
+        indent(0) do
+          visit_string_literal_end(heredoc)
+        end
         @current_heredoc = nil
         first_heredoc = false
       end

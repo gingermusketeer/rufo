@@ -154,7 +154,7 @@ foo(<<-EOF)
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_with_bizarre_syntax
+#~# ORIGINAL heredoc_with_bizarre_syntax
 
 foo <<-EOF.bar if 1
   x
@@ -166,7 +166,7 @@ foo <<-EOF.bar if 1
   x
 EOF
 
-#~# ORIGINAL skip heredoc_with_percent
+#~# ORIGINAL heredoc_with_percent
 
 <<-EOF % 1
   bar
@@ -178,7 +178,7 @@ EOF
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_as_hash_value
+#~# ORIGINAL heredoc_as_hash_value
 
 {1 => <<EOF,
 text
@@ -187,7 +187,22 @@ EOF
 
 #~# EXPECTED
 
+{ 1 => <<EOF,
+text
+EOF
+   2 => 3 }
+
+#~# ORIGINAL heredoc as hash value with line length
+#~# line_length: 1
+
 {1 => <<EOF,
 text
 EOF
  2 => 3}
+
+#~# EXPECTED
+
+{ 1 => <<EOF,
+text
+EOF
+   2 => 3 }
