@@ -196,6 +196,8 @@ module Rufo
         visit_module(node)
       when :sclass
         visit_sclass(node)
+      when :field
+        visit_setter(node)
       when :symbol_literal
         # [:symbol_literal, [:symbol, [:@ident, "foo", [1, 1]]]]
         #
@@ -497,19 +499,21 @@ module Rufo
     def visit_assign_value(value)
       skip_space_or_newline
 
-      if %i(on_int on_tstring_beg).include?(current_token_kind)
-        write_line
-        indent do
-          visit(value)
-        end
-      elsif %w(case if unless).include?(current_token_value)
-        write " "
-        indent(@column) do
+      group(:assign_value) do
+        if %i(on_int on_tstring_beg).include?(current_token_kind)
+          write_line
+          indent do
+            visit(value)
+          end
+        elsif %w(case if unless).include?(current_token_value)
+          write " "
+          indent(@column) do
+            visit value
+          end
+        else
+          write " "
           visit value
         end
-      else
-        write " "
-        visit value
       end
     end
 
@@ -1296,6 +1300,33 @@ module Rufo
       visit target
       write_if_break(HARDLINE, "; ")
       visit body
+    end
+
+    def visit_setter(node)
+      # foo.bar
+      # (followed by `=`, though not included in this node)
+      #
+      # [:field, receiver, :".", name]
+      _, receiver, dot, name = node
+
+      visit receiver
+
+      if current_token_kind == :on_op
+        skip_space_or_newline
+        consume_token :on_op
+        skip_space_or_newline
+        visit name
+      else
+        @expression_context.chained_call_count += 1
+
+        set_indent(@expression_context.dot_indent)
+
+        write_softline
+        skip_space_or_newline
+        consume_token :on_period
+        skip_space_or_newline
+        visit name
+      end
     end
 
     def visit_literal_elements(elements, inside_hash: false, inside_array: false)
