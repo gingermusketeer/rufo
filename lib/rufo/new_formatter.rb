@@ -106,6 +106,9 @@ module Rufo
       when :@kw
         # [:@kw, "nil", [1, 0]]
         consume_token :on_kw
+      when :@ivar
+        # [:@ivar, "@foo", [1, 0]]
+        consume_token :on_ivar
       when :const_path_ref
         visit_path(node)
       when :const_path_field
@@ -159,6 +162,8 @@ module Rufo
       when :return
         # [:return, exp]
         visit_control_keyword node, "return"
+      when :defined
+        visit_defined(node)
       when :yield0
         consume_keyword "yield"
       when :return0
@@ -719,6 +724,33 @@ module Rufo
     def visit_rescue_types(node)
       group do
         visit_exps to_ary(node), with_lines: false
+      end
+    end
+
+    def visit_defined(node)
+      # [:defined, exp]
+      _, exp = node
+
+      consume_keyword "defined?"
+
+
+      has_space = space?
+      has_paren = current_token_kind == :on_lparen
+
+      skip_space_or_newline
+
+      if has_paren && !has_space
+        consume_token :on_lparen
+        skip_space_or_newline
+      else
+        write " "
+      end
+
+      visit exp
+
+      if has_paren && !has_space
+        skip_space_or_newline
+        consume_token :on_rparen
       end
     end
 
