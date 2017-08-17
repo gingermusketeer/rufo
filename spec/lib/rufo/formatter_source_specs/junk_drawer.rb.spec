@@ -7,11 +7,9 @@ end
 
 #~# EXPECTED
 
-def foo
-end
+def foo; end
 
-def bar
-end
+def bar; end
 
 #~# ORIGINAL 
 
@@ -22,11 +20,9 @@ end
 
 #~# EXPECTED
 
-class Foo
-end
+class Foo; end
 
-class Bar
-end
+class Bar; end
 
 #~# ORIGINAL 
 
@@ -37,11 +33,9 @@ end
 
 #~# EXPECTED
 
-module Foo
-end
+module Foo; end
 
-module Bar
-end
+module Bar; end
 
 #~# ORIGINAL 
 
@@ -53,5 +47,4 @@ end
 
 1
 
-def foo
-end
+def foo; end
