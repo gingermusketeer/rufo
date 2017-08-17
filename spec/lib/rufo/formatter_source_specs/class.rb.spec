@@ -5,8 +5,7 @@ class   Foo
 
 #~# EXPECTED
 
-class Foo
-end
+class Foo; end
 
 #~# ORIGINAL 
 
@@ -15,8 +14,7 @@ class   Foo  < Bar
 
 #~# EXPECTED
 
-class Foo < Bar
-end
+class Foo < Bar; end
 
 #~# ORIGINAL 
 
@@ -45,27 +43,37 @@ class Foo;
 
 #~# EXPECTED
 
+class Foo; end
+
+#~# ORIGINAL
+
+class Foo; 1; end
+class Bar; 2; end
+
+#~# EXPECTED
+
 class Foo
+  1
+end
+
+class Bar
+  2
 end
 
 #~# ORIGINAL 
 
 class Foo; 1; end
-class Bar; 2; end
 
-#~# EXPECTED
 
-class Foo; 1; end
-class Bar; 2; end
-
-#~# ORIGINAL 
-
-class Foo; 1; end
 
 class Bar; 2; end
 
 #~# EXPECTED
 
-class Foo; 1; end
+class Foo
+  1
+end
 
-class Bar; 2; end
+class Bar
+  2
+end

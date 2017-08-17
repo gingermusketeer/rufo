@@ -226,15 +226,16 @@ module Rufo
 
         if with_lines
           exp_needs_two_lines = needs_two_lines?(exp)
+          needs_two_lines = !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
 
           if exp == [:void_stmt] || (is_last && !allow_trailing_newline)
             skip_space_or_newline
           else
-            consume_end_of_line(want_multiline: !is_last)
+            consume_end_of_line(want_multiline: !is_last && !needs_two_lines)
           end
 
           # Make sure to put two lines before defs, class and others
-          if !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
+          if needs_two_lines
             write_breaking_hardline
           end
         end
@@ -1026,6 +1027,16 @@ module Rufo
       consume_keyword "class"
       consume_space
       visit name
+
+      if superclass
+        skip_space_or_newline
+        write " "
+        consume_op "<"
+        skip_space_or_newline
+        write " "
+        visit superclass
+      end
+
       write_if_break(HARDLINE, "; ")
       visit body
     end
@@ -1351,7 +1362,7 @@ module Rufo
       kind = exp[0]
 
       case kind
-      when :def
+      when :def, :class
         true
       else
         false

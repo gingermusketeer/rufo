@@ -36,6 +36,20 @@
 
 "hello"
 
+#~# ORIGINAL two strings separated by extra newlines
+
+'hello'
+
+
+
+'hello'
+
+#~# EXPECTED
+
+'hello'
+
+'hello'
+
 #~# ORIGINAL string interpolation
 
 "hello #{name}"
