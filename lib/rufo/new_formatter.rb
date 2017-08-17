@@ -49,7 +49,7 @@ module Rufo
 
     def visit(node)
       unless node.is_a?(Array)
-        bug "Expected array node, but found: #{node} at #{current_token}"
+        bug "Expected array node, but found: #{node.ai} at #{current_token}"
       end
 
       case node.first
@@ -113,6 +113,9 @@ module Rufo
       when :@ivar
         # [:@ivar, "@foo", [1, 0]]
         consume_token :on_ivar
+      when :kwrest_param
+        # ruby-head type
+        visit(node[1]) if node[1]
       when :const_path_ref
         visit_path(node)
       when :const_path_field
