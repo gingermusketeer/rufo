@@ -141,7 +141,7 @@
   4, # foo
 ]
 
-#~# ORIGINAL
+#~# ORIGINAL array inside begin
 
  begin
  [ 

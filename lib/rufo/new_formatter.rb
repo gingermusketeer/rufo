@@ -210,8 +210,9 @@ module Rufo
 
     # Visit an array of expressions
     #
-    # - with_lines:  consume whole line for each expression
-    def visit_exps(exps, with_lines: true)
+    # - with_lines:             consume whole line for each expression
+    # - allow_trailing_newline: allow a trailing newline
+    def visit_exps(exps, with_lines: true, allow_trailing_newline: true)
       consume_end_of_line(at_prefix: true)
 
       exps.each_with_index do |exp, i|
@@ -226,7 +227,7 @@ module Rufo
         if with_lines
           exp_needs_two_lines = needs_two_lines?(exp)
 
-          if exp == [:void_stmt]
+          if exp == [:void_stmt] || (is_last && !allow_trailing_newline)
             skip_space_or_newline
           else
             consume_end_of_line(want_multiline: !is_last)
@@ -234,7 +235,7 @@ module Rufo
 
           # Make sure to put two lines before defs, class and others
           if !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
-            write_hardline
+            write_breaking_hardline
           end
         end
       end
@@ -261,7 +262,7 @@ module Rufo
           elsif last == :newline
             multiple_lines = true
           else
-            write_hardline
+            write_breaking_hardline
           end
 
           move_to_next_token
@@ -272,7 +273,7 @@ module Rufo
           move_to_next_token
         when :on_comment
           if !at_prefix && multiple_lines
-            write_hardline
+            write_breaking_hardline
             found_newline = false
             multiple_lines = false
           end
@@ -280,7 +281,7 @@ module Rufo
           handle_comment
 
           if current_token_value.end_with?("\n")
-            write_hardline 
+            write_breaking_hardline 
             found_newline = true
           end
 
@@ -301,7 +302,7 @@ module Rufo
       # or we just passed multiple lines (but printed only one)
       if !at_prefix && want_multiline && (!found_newline || multiple_lines)
         debug "consume_end_of_line: needs an extra newline"
-        write_hardline
+        write_breaking_hardline
       end
     end
 
@@ -313,7 +314,7 @@ module Rufo
         move_to_next_token
       end
 
-      write_hardline if needs_extra_newline
+      write_breaking_hardline if needs_extra_newline
     end
 
     # Skip spaces and newlines
@@ -331,7 +332,7 @@ module Rufo
         when :on_sp, :on_semicolon
           move_to_next_token
         when :on_comment
-          write_hardline if skipped_empty_line
+          write_breaking_hardline if skipped_empty_line
 
           handle_comment(trailing: !skipped_one_newline)
           move_to_next_token
@@ -349,7 +350,7 @@ module Rufo
         if trailing
           write_trailing value
         else
-          write_hardline
+          write_breaking_hardline
           write value
         end
 
@@ -377,16 +378,20 @@ module Rufo
       _, body_statement = node
       _, _body, rescue_body, _else_body, ensure_body = body_statement
 
-      group do
-        indent_level = if rescue_body || ensure_body
-                          @column
-                        else
-                          @indent
-                        end
+      indent_level = if rescue_body || ensure_body
+                       @column
+                     else
+                       @indent
+                     end
 
-        indent(indent_level) do
-          consume_keyword "begin"
-          write_if_break(HARDLINE, "; ")
+      indent(indent_level) do
+        consume_keyword "begin"
+
+        if body_statement_empty?(body_statement)
+          write "; "
+          visit body_statement
+        else
+          write_breaking_hardline
           visit body_statement
         end
       end
@@ -434,6 +439,11 @@ module Rufo
         write_line
         indent do
           visit(value)
+        end
+      elsif %w(case).include?(current_token_value)
+        write " "
+        indent(@column) do
+          visit value
         end
       else
         write " "
@@ -486,14 +496,12 @@ module Rufo
       # [:assign, target, value]
       _, target, value = node
 
-      group do
-        visit(target)
+      visit(target)
 
-        consume_space
-        consume_op "="
+      consume_space
+      consume_op "="
 
-        visit_assign_value(value)
-      end
+      visit_assign_value(value)
     end
 
     def indentable_value?(value)
@@ -663,7 +671,7 @@ module Rufo
       if ensure_body
         # [:ensure, body]
         consume_keyword "ensure"
-        write_hardline
+        write_breaking_hardline
         indent_body ensure_body[1]
       end
 
@@ -699,7 +707,7 @@ module Rufo
         consume_space
         visit condition
         skip_space
-        write_hardline
+        write_breaking_hardline
 
         indent_body body
 
@@ -711,28 +719,76 @@ module Rufo
       # [:case, cond, case_when]
       _, cond, case_when = node
 
-      indent(@column) do
-        consume_keyword "case"
+      consume_keyword "case"
 
-        consume_end_of_line
-
-        visit case_when
-
-        consume_keyword "end"
+      if cond
+        consume_space
+        visit cond
       end
+
+      consume_end_of_line
+
+      visit case_when
+
+      consume_keyword "end"
     end
 
     def visit_when(node)
       # [:when, conds, body, next_exp]
       _, conds, body, next_exp = node
 
-      consume_keyword "when"
-      consume_space
+      group(:case_when) do
+        consume_keyword "when"
+        consume_space
 
-      visit_comma_separated_list conds
-      consume_end_of_line
+        indent(@column) do
+          group(:when_conditions) do
+            visit_comma_separated_list conds
+          end
+        end
 
-      indent_body body
+        indent do
+          skip_space_or_newline
+
+          then_keyword = keyword?("then")
+          if then_keyword
+            move_to_next_token
+            write_if_break(HARDLINE, " then ")
+          else
+            write_breaking_hardline
+          end
+
+          skip_space_or_newline
+
+          body = body_without_void_statements(body)
+
+          if !body.empty?
+            visit_exps body, allow_trailing_newline: false
+            skip_space_or_newline
+
+            write_hardline
+          end
+        end
+
+        if next_exp
+          if next_exp.first == :else
+            # [:else, body]
+            _, body = next_exp
+
+            consume_keyword "else"
+            skip_space_or_newline
+            write_line
+            body = body_without_void_statements(body)
+            indent do
+              visit_exps body, with_lines: body.count > 1
+            end
+            skip_space_or_newline
+            write_hardline
+          else
+            visit next_exp
+          end
+        end
+      end
     end
 
     def visit_mrhs_new_from_args(node)
@@ -856,12 +912,12 @@ module Rufo
 
       # If the whole block fits into a single line, format
       # in a single line
-      group do
+      group(:BEGIN_or_END) do
         consume_token :on_lbrace
 
         indent do
           skip_space_or_newline
-          write_hardline
+          write_breaking_hardline
           visit_exps body, with_lines: true
           consume_end_of_line
         end
@@ -943,21 +999,19 @@ module Rufo
       _, elements = node
 
       check :on_lbracket
-      group do
-        write "["
-        move_to_next_token
+      write "["
+      move_to_next_token
 
-        if elements
-          indent do
-            visit_literal_elements to_ary(elements), inside_array: true
-          end
-        else
-          skip_space_or_newline
+      if elements
+        indent do
+          visit_literal_elements to_ary(elements), inside_array: true
         end
-
-        check :on_rbracket
-        write "]"
+      else
+        skip_space_or_newline
       end
+
+      check :on_rbracket
+      write "]"
 
       move_to_next_token
     end
@@ -1081,19 +1135,17 @@ module Rufo
       # [:binary, left, op, right]
       _, left, op, right = node
 
-      group do
-        visit left
+      visit left
 
-        consume_space unless op == :**
+      consume_space unless op == :**
 
-        consume_op_or_keyword op
+      consume_op_or_keyword op
 
-        skip_space_or_newline
+      skip_space_or_newline
 
-        indent do
-          op == :** ? write_softline : write_line
-          visit right
-        end
+      indent do
+        op == :** ? write_softline : write_line
+        visit right
       end
     end
 
@@ -1389,10 +1441,18 @@ module Rufo
       write SOFTLINE
     end
 
-    def write_hardline
+    def write_breaking_hardline
       if @group
         write HARDLINE
         write_breaking
+      else
+        write("\n")
+      end
+    end
+
+    def write_hardline
+      if @group
+        write HARDLINE
       else
         write("\n")
       end
@@ -1489,14 +1549,24 @@ module Rufo
 
       line = current_token_line
 
-      write_hardline if @output[-2..-1] != "\n\n"
+      write_breaking_hardline if @output[-2..-1] != "\n\n"
       consume_token :on___end__
 
       lines = @code.lines[line..-1]
       lines.each do |line|
         write line.chomp
-        write_hardline
+        write_breaking_hardline
       end
+    end
+
+    def body_without_void_statements(body)
+      body.reject { |e| e.first == :void_stmt }
+    end
+
+    def body_statement_empty?(body_statement)
+      _, body, rescue_body, else_body, ensure_body = body_statement
+
+      body_without_void_statements(body).empty? && !rescue_body && !else_body && !ensure_body
     end
 
     def debug(msg)

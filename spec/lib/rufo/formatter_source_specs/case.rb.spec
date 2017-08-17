@@ -1,4 +1,4 @@
-#~# ORIGINAL 
+#~# ORIGINAL basic then
 
 case 
  when 1 then 2 
@@ -10,7 +10,7 @@ case
 when 1 then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL multiple when then
 
 case 
  when 1 then 2 
@@ -24,7 +24,7 @@ when 1 then 2
 when 3 then 4
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL when then else
 
 case 
  when 1 then 2 else 3 
@@ -37,7 +37,7 @@ when 1 then 2
 else 3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 ; 2 
@@ -46,10 +46,73 @@ case
 #~# EXPECTED
 
 case
-when 1; 2
+when 1
+  2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL when then with multiple statements
+
+case
+  when 1 then 2; 3
+    end
+
+#~# EXPECTED
+
+case
+when 1
+  2
+  3
+end
+
+#~# ORIGINAL if one then needs to break, all should break
+
+case
+when 1 then 2
+when 2 then 3; 4
+end
+
+#~# EXPECTED
+
+case
+when 1
+  2
+when 2
+  3
+  4
+end
+
+#~# ORIGINAL breaks then if the line is too long
+#~# line_length: 10
+
+case
+when 1 then 1000
+end
+
+#~# EXPECTED
+
+case
+when 1
+  1000
+end
+
+#~# ORIGINAL breaks else if the line is too long
+#~# line_length: 10
+
+case
+when 1 then 1000
+else 2000
+end
+
+#~# EXPECTED
+
+case
+when 1
+  1000
+else
+  2000
+end
+
+#~# ORIGINAL
 
 case 
  when 1 
@@ -63,7 +126,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 
@@ -79,7 +142,7 @@ when 1
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 
@@ -99,7 +162,7 @@ when 4
   5
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL case with cond
 
 case 123 
  when 1 
@@ -113,7 +176,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case  # foo 
  when 1 
@@ -122,12 +185,12 @@ case  # foo
 
 #~# EXPECTED
 
-case  # foo
+case # foo
 when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1  # comment 
@@ -141,7 +204,7 @@ when 1 # comment
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 then 2 else 
@@ -152,11 +215,10 @@ case
 
 case
 when 1 then 2
-else
-  3
+else 3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 then 2 else ; 
@@ -167,11 +229,10 @@ case
 
 case
 when 1 then 2
-else
-  3
+else 3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 then 2 else  # comm 
@@ -181,12 +242,13 @@ case
 #~# EXPECTED
 
 case
-when 1 then 2
+when 1
+  2
 else # comm
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 begin 
  case 
@@ -212,7 +274,7 @@ begin
   end
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 then 
@@ -222,11 +284,10 @@ case
 #~# EXPECTED
 
 case
-when 1
-  2
+when 1 then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 then ; 
@@ -236,11 +297,10 @@ case
 #~# EXPECTED
 
 case
-when 1
-  2
+when 1 then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 ; 
@@ -254,7 +314,7 @@ when 1
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 , 
@@ -265,12 +325,26 @@ case
 #~# EXPECTED
 
 case
+when 1, 2
+  3
+end
+
+#~# ORIGINAL breaking when for short line length
+#~# line_length: 5
+
+case
+when 1, 2 then 3
+end
+
+#~# EXPECTED
+
+case
 when 1,
      2
   3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 
  when 1 , 2,  # comm
@@ -281,11 +355,12 @@ case
 #~# EXPECTED
 
 case
-when 1, 2,  # comm
+when 1,
+     2, # comm
      3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 begin 
  case 
@@ -305,7 +380,7 @@ begin
   end
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 1
  when *x , *y 
@@ -319,7 +394,7 @@ when *x, *y
   2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 1
 when *x then 2
@@ -331,7 +406,7 @@ case 1
 when *x then 2
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 1
 when  2  then  3
@@ -340,10 +415,10 @@ end
 #~# EXPECTED
 
 case 1
-when  2  then  3
+when 2 then 3
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 1
 when 2 then # comment
@@ -352,10 +427,11 @@ end
 #~# EXPECTED
 
 case 1
-when 2 then # comment
+when 2
+  # comment
 end
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 case 1
  when 2 then 3
@@ -367,6 +443,5 @@ end
 
 case 1
 when 2 then 3
-else
-  4
+else 4
 end

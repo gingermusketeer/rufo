@@ -141,11 +141,109 @@ module Rufo
       expect(group.to_s).to eq "x.y"
     end
 
+    describe "trailing" do
+      it "adds a space if it's appended" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << "text"
+        group << GroupTrailing.new("# comment")
+
+        group.process
+
+        expect(group.to_s).to eq "text # comment"
+      end
+
+      it "adds no space if it's on it's own line" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << "text"
+        group << "\n"
+        group << GroupTrailing.new("# comment")
+
+        group.process
+
+        expect(group.to_s).to eq "text\n# comment"
+      end
+
+      it "adds no space if it's the first token" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << GroupTrailing.new("# comment")
+
+        group.process
+
+        expect(group.to_s).to eq "# comment"
+      end
+       
+      it "adds no space if it's right after a breaking marker" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << GroupIndent.new(2)
+        group << "\n"
+        group << BREAKING
+        group << GroupTrailing.new("# comment")
+
+        group.process
+
+        expect(group.to_s).to eq "\n  # comment"
+      end
+
+      it "writes a newline if the next isn't a newline" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << GroupTrailing.new("# comment")
+        group << "hello"
+
+        group.process
+
+        expect(group.to_s).to eq "# comment\nhello"
+      end
+
+      it "breaks if the next isn't a newline" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << GroupTrailing.new("# comment")
+        group << BREAK_NOTE
+        group << "hello"
+
+        group.process
+
+        expect(group.to_s).to eq "# comment\n#{BREAK_NOTE_TEXT}hello"
+      end
+
+      it "doesn't write a newline if next is a newline" do
+        group = described_class.new(:group, indent: 0, line_length: 10)
+
+        group << GroupTrailing.new("# comment")
+        group << HARDLINE
+        group << "hello"
+
+        group.process
+
+        expect(group.to_s).to eq "# comment\nhello"
+      end
+
+      it "writes a newline if it's the last of a group" do
+        group = described_class.new(:group, indent: 0, line_length: 80)
+        inner = described_class.new(:inner, indent: 0, line_length: 80)
+
+        group << "hi"
+
+        inner << GroupTrailing.new("# comment")
+        group << inner
+
+        group << "hi"
+
+        group.process
+
+        expect(group.to_s).to eq "hi # comment\nhi"
+      end
+    end
+
     describe "indent" do
       it "indents correctly" do
         group = described_class.new(:group, indent: 0, line_length: 10)
 
-        group << "\n"
         group << GroupIndent.new(4)
         group << "hello!"
         group << "\n"
@@ -156,9 +254,63 @@ module Rufo
 
         group.process
 
-        expect(group.to_s).to include "\n    hello!"
+        expect(group.to_s).to include "    hello!"
         expect(group.to_s).to include "\n    this should be 4 deep"
         expect(group.to_s).to include "\n  2 deep"
+      end
+
+      it "works after a newline at the end of a group" do
+        group = described_class.new(:group, indent: 0, line_length: 100)
+
+        group << "hello!\n"
+        group << GroupIndent.new(4)
+
+        inner = described_class.new(:group, indent: 4, line_length: 100)
+        inner << "hello!\n"
+        group << inner
+
+        group << "hello!"
+
+        group.process
+
+        expect(group.to_s).to eq "hello!\n    hello!\n    hello!"
+      end
+
+      it "indent around indent doesn't break things", focus: false do
+        group = described_class.new(:group, indent: 0, line_length: 100)
+
+        group << "when"
+        group << " "
+        group << "1"
+        group << "\n"
+        group << GroupIndent.new(2)
+        group << GroupIndent.new(2)
+
+        inner = described_class.new(:group, indent: 2, line_length: 100)
+        inner << "hello!"
+        group << inner
+
+        group << GroupIndent.new(2)
+        group << "\n"
+        group << GroupIndent.new(0)
+        group << "end"
+
+        group.process
+
+        expect(group.to_s).to eq "when 1\n  hello!\nend"
+      end
+
+      it "indented empty newline doesn't add any text", focus: false do
+        group = described_class.new(:group, indent: 2, line_length: 100)
+
+        group << "hello"
+        group << "\n"
+        group << "\n"
+        group << "hello"
+
+        group.process(column: 0)
+
+        expect(group.to_s).to eq "  hello\n\n  hello"
       end
     end
 
