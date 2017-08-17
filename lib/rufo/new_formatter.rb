@@ -1140,6 +1140,14 @@ module Rufo
         end
       end
 
+      if double_star_param
+        consume_op "**"
+        skip_space_or_newline
+
+        # A nameless double star comes as an... Integer? :-S
+        visit double_star_param if double_star_param.is_a?(Array)
+      end
+
       skip_space_or_newline
     end
 

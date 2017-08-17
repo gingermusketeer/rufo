@@ -142,7 +142,7 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip double star params
+#~# ORIGINAL double star params
 
 def meth      **options
 end
@@ -151,7 +151,7 @@ end
 
 def meth(**options); end
 
-#~# ORIGINAL skip double star params with line length
+#~# ORIGINAL double star params with line length
 #~# line_length: 1
 
 def meth      **options
@@ -163,6 +163,26 @@ def meth(
   **options
 )
 end
+
+#~# ORIGINAL unnamed double star
+
+def meth(
+      **
+    ); end
+
+#~# EXPECTED
+
+def meth(**); end
+
+#~# ORIGINAL poorly formatted double star
+
+def meth(**
+         options)
+end
+
+#~# EXPECTED
+
+def meth(**options); end
 
 #~# ORIGINAL skip commented args
 
