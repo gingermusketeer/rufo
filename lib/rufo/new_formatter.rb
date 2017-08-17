@@ -1129,6 +1129,17 @@ module Rufo
         visit_comma_separated_list post_rest_params
       end
 
+      if label_params
+        # [[label, value], ...]
+        visit_comma_separated_list(label_params) do |label, value|
+          # [:@label, "b:", [1, 20]]
+          # [:var_ref, [:kw, "nil", [2, 25]]]
+          visit label
+          consume_space
+          visit value
+        end
+      end
+
       skip_space_or_newline
     end
 

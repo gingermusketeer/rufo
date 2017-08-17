@@ -120,17 +120,16 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip keyword args
+#~# ORIGINAL keyword args
 
 def meth(fallback:       nil)
 end
 
 #~# EXPECTED
 
-def meth(fallback: nil)
-end
+def meth(fallback: nil); end
 
-#~# ORIGINAL skip keyword args with line length
+#~# ORIGINAL keyword args with line length
 #~# line_length: 1
 
 def meth(fallback:       nil)
