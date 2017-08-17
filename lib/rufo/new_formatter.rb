@@ -1125,8 +1125,6 @@ module Rufo
       #   [:arg_paren, [:args_add_block, [[:@int, "1", [1, 6]]], false]]]
       _, _name, args = node
 
-      return if args.empty?
-
       group(:visit_call_at_paren) do
         consume_token :on_lparen
         write_softline
