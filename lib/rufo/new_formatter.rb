@@ -605,7 +605,7 @@ module Rufo
       end
 
       if !empty_params?(params)
-        group do
+        group(:method_arguments) do
           write "("
           write_softline
 
@@ -614,8 +614,12 @@ module Rufo
           end
 
           write_softline
-          write ")"
-          move_to_next_token
+
+          if current_token_kind == :on_rparen
+            consume_token :on_rparen
+          else
+            write ")"
+          end
         end
       end
 
@@ -752,7 +756,6 @@ module Rufo
       _, exp = node
 
       consume_keyword "defined?"
-
 
       has_space = space?
       has_paren = current_token_kind == :on_lparen
@@ -1091,6 +1094,8 @@ module Rufo
 
       skip_space_or_newline
 
+      needs_comma = false
+
       if pre_rest_params
         visit_comma_separated_list pre_rest_params
       end
@@ -1111,7 +1116,20 @@ module Rufo
         consume_op "*"
         skip_space_or_newline
         visit rest if rest
+
+        skip_space_or_newline
+        needs_comma = true
       end
+
+      if post_rest_params
+        if needs_comma
+          consume_token :on_comma
+          write_line
+        end
+        visit_comma_separated_list post_rest_params
+      end
+
+      skip_space_or_newline
     end
 
     def visit_comma_separated_list(nodes)

@@ -95,7 +95,7 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip post rest params
+#~# ORIGINAL post rest params
 
 def meth(        *args,    second_to_last,last
         )
@@ -105,7 +105,7 @@ end
 
 def meth(*args, second_to_last, last); end
 
-#~# ORIGINAL skip post rest params with line length
+#~# ORIGINAL post rest params with line length
 #~# line_length: 1
 
 def meth(        *args    ,    last
