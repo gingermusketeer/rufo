@@ -665,8 +665,10 @@ module Rufo
           visit(name)
         end
 
-        consume_end_of_line
-        indent_body body
+        indent do
+          consume_end_of_line
+          visit_exps body
+        end
 
         rescue_body = more_rescue
       end
