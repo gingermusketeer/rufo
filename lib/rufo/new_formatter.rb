@@ -162,6 +162,8 @@ module Rufo
         move_to_next_token
       when :class
         visit_class(node)
+      when :sclass
+        visit_sclass(node)
       when :symbol_literal
         # [:symbol_literal, [:symbol, [:@ident, "foo", [1, 1]]]]
         #
@@ -1037,6 +1039,21 @@ module Rufo
         visit superclass
       end
 
+      write_if_break(HARDLINE, "; ")
+      visit body
+    end
+
+    def visit_sclass(node)
+      # class << self
+      #
+      # [:sclass, target, body]
+      _, target, body = node
+
+      consume_keyword "class"
+      consume_space
+      consume_op "<<"
+      consume_space
+      visit target
       write_if_break(HARDLINE, "; ")
       visit body
     end
