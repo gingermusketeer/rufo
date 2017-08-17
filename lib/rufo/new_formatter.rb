@@ -706,6 +706,7 @@ module Rufo
       consume_block_args args
 
       if body.first == :bodystmt
+        write_breaking_hardline
         visit_bodystmt body
       else
         write_hardline
