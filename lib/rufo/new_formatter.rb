@@ -498,7 +498,7 @@ module Rufo
         indent do
           visit(value)
         end
-      elsif %w(case).include?(current_token_value)
+      elsif %w(case if unless).include?(current_token_value)
         write " "
         indent(@column) do
           visit value
@@ -787,19 +787,58 @@ module Rufo
       # end
       #
       # [:if, cond, then, else]
-      _, condition, body, else_body = node
+      _, condition, body, else_clause = node
 
-      indent(@column) do
-        consume_keyword(keyword)
-        consume_space
-        visit condition
-        skip_space
+      consume_keyword(keyword)
+      consume_space
+      visit condition
+
+      indent do
+        skip_space_or_newline
+        move_to_next_token if keyword?("then")
+        skip_space_or_newline
         write_breaking_hardline
 
-        indent_body body
-
-        consume_keyword "end"
+        visit_exps body
+        write_hardline unless last_is_newline?
       end
+
+      if else_clause
+        # [:else, body]
+        # [:elsif, cond, body]
+        kind, else_body = else_clause
+        cond = nil
+
+        bug "expected else or elsif, not #{kind}" unless %i(else elsif).include?(kind)
+
+        if kind == :elsif
+          _, cond, else_body = else_clause
+        elsif else_body != [[:void_stmt]]
+          consume_keyword "else"
+        end
+
+        if cond
+          consume_keyword "elsif"
+          consume_space
+          skip_space_or_newline
+          visit cond
+        end
+
+        if else_body != [[:void_stmt]]
+          indent do
+            skip_space_or_newline
+            write_breaking_hardline
+
+            visit_exps else_body, allow_trailing_newline: false
+            write_hardline
+          end
+        else
+          move_to_next_token
+        end
+      end
+
+      skip_space_or_newline
+      consume_keyword "end"
     end
 
     def visit_suffix(node, suffix)
