@@ -189,6 +189,8 @@ module Rufo
         move_to_next_token
       when :class
         visit_class(node)
+      when :module
+        visit_module(node)
       when :sclass
         visit_sclass(node)
       when :symbol_literal
@@ -254,8 +256,7 @@ module Rufo
         is_last = last?(i, exps)
 
         if with_lines
-          exp_needs_two_lines = needs_two_lines?(exp)
-          needs_two_lines = !is_last && exp_needs_two_lines && needs_two_lines?(exps[i + 1])
+          needs_two_lines = !is_last && needs_two_lines?(exps[i + 1])
 
           if exp == [:void_stmt] || (is_last && !allow_trailing_newline)
             skip_space_or_newline
@@ -694,7 +695,9 @@ module Rufo
       # [:bodystmt, body, rescue_body, else_body, ensure_body]
       _, body, rescue_body, else_body, ensure_body = node
 
-      if body == [[:void_stmt]]
+      body = body_without_void_statements(body)
+
+      if body.empty?
         skip_space_or_newline
       else
         write_breaking
@@ -1185,6 +1188,21 @@ module Rufo
       visit body
     end
 
+    def visit_module(node)
+      # [:module,
+      #   name
+      #   [:bodystmt, body, nil, nil, nil]]
+      _, name, body = node
+
+      consume_keyword "module"
+      consume_space
+      skip_space_or_newline
+      visit name
+
+      write_if_break(HARDLINE, "; ")
+      visit body
+    end
+
     def visit_sclass(node)
       # class << self
       #
@@ -1521,7 +1539,7 @@ module Rufo
       kind = exp[0]
 
       case kind
-      when :def, :class
+      when :def, :class, :module
         true
       else
         false
@@ -1763,6 +1781,15 @@ module Rufo
       _, body, rescue_body, else_body, ensure_body = body_statement
 
       body_without_void_statements(body).empty? && !rescue_body && !else_body && !ensure_body
+    end
+
+    def body_statement_without_void_statements(body_statement)
+      kind, *bodies = body_statement
+
+      [
+        kind,
+        *bodies.map { |b| b && body_without_void_statements(b) },
+      ]
     end
 
     def debug(msg)
