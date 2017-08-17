@@ -218,6 +218,22 @@ def meth(
 )
 end
 
+#~# ORIGINAL trailling commented args
+
+def say_hi(
+      name,# String
+      greeting = "hi"# please
+    )
+end
+
+#~# EXPECTED
+
+def say_hi(
+  name, # String
+  greeting = "hi" # please
+)
+end
+
 #~# ORIGINAL all together now
 #~# line_length: 110
 

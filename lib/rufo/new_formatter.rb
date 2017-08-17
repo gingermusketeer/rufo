@@ -1091,24 +1091,16 @@ module Rufo
 
     def visit_params(node)
       # [:params, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg]
-      _, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
+      _, *params = node #pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
 
-      needs_comma = false
-
-      if pre_rest_params
-        visit_comma_separated_list pre_rest_params
+      if pre_rest_params = params.shift
+        visit_comma_separated_list pre_rest_params, trailing_comma: params.compact.any?
 
         skip_space_or_newline
-        needs_comma = true
       end
 
-      if args_with_default
-        if needs_comma
-          consume_token :on_comma
-          write_line
-        end
-
-        visit_comma_separated_list(args_with_default) do |arg, default|
+      if args_with_default = params.shift
+        visit_comma_separated_list(args_with_default, trailing_comma: params.compact.any?) do |arg, default|
           visit arg
           consume_space
           consume_op "="
@@ -1117,15 +1109,9 @@ module Rufo
         end
 
         skip_space_or_newline
-        needs_comma = true
       end
 
-      if rest_param
-        if needs_comma
-          consume_token :on_comma
-          write_line
-        end
-
+      if rest_param = params.shift
         skip_space_or_newline
 
         # [:rest_param, [:@ident, "x", [1, 15]]]
@@ -1134,30 +1120,23 @@ module Rufo
         skip_space_or_newline
         visit rest if rest
 
-        skip_space_or_newline
-        needs_comma = true
-      end
-
-      if post_rest_params
-        if needs_comma
+        if params.compact.any?
+          skip_space
           consume_token :on_comma
+          skip_space_or_newline
           write_line
         end
-
-        visit_comma_separated_list post_rest_params
-
-        skip_space_or_newline
-        needs_comma = true
       end
 
-      if label_params
-        if needs_comma
-          consume_token :on_comma
-          write_line
-        end
+      if post_rest_params = params.shift
+        visit_comma_separated_list post_rest_params, trailing_comma: params.compact.any?
 
+        skip_space_or_newline
+      end
+
+      if label_params = params.shift
         # [[label, value], ...]
-        visit_comma_separated_list(label_params) do |label, value|
+        visit_comma_separated_list(label_params, trailing_comma: params.compact.any?) do |label, value|
           # [:@label, "b:", [1, 20]]
           # [:var_ref, [:kw, "nil", [2, 25]]]
           visit label
@@ -1169,15 +1148,9 @@ module Rufo
         end
 
         skip_space_or_newline
-        needs_comma = true
       end
 
-      if double_star_param
-        if needs_comma
-          consume_token :on_comma
-          write_line
-        end
-
+      if double_star_param = params.shift
         skip_space_or_newline
         consume_op "**"
         skip_space_or_newline
@@ -1186,10 +1159,13 @@ module Rufo
         visit double_star_param if double_star_param.is_a?(Array)
       end
 
+      bug "unexpected params" if params.any?
+
       skip_space_or_newline
     end
 
-    def visit_comma_separated_list(nodes)
+    # trailing_comma: if we know this list will need a trailing comma
+    def visit_comma_separated_list(nodes, trailing_comma: false)
       nodes = to_ary(nodes)
 
       consume_end_of_line(at_prefix: true)
@@ -1201,7 +1177,7 @@ module Rufo
           visit exp
         end
 
-        next if last?(i, nodes)
+        next if last?(i, nodes) && !trailing_comma
 
         skip_space
         consume_token :on_comma
