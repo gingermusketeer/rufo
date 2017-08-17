@@ -65,7 +65,7 @@ def meth(
 )
 end
 
-#~# ORIGINAL skip rest params
+#~# ORIGINAL rest params
 
 def meth(*args)
 
@@ -77,7 +77,7 @@ end
 
 def meth(*args); end
 
-#~# ORIGINAL skip rest params with line length
+#~# ORIGINAL rest params with line length
 #~# line_length: 1
 
 def meth(

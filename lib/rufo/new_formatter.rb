@@ -1089,6 +1089,7 @@ module Rufo
       # [:params, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg]
       _, pre_rest_params, args_with_default, rest_param, post_rest_params, label_params, double_star_param, blockarg = node
 
+      skip_space_or_newline
 
       if pre_rest_params
         visit_comma_separated_list pre_rest_params
@@ -1102,6 +1103,14 @@ module Rufo
           consume_space
           visit default
         end
+      end
+
+      if rest_param
+        # [:rest_param, [:@ident, "x", [1, 15]]]
+        _, rest = rest_param
+        consume_op "*"
+        skip_space_or_newline
+        visit rest if rest
       end
     end
 
