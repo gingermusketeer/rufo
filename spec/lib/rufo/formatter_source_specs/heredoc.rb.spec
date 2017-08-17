@@ -26,25 +26,27 @@ foo 1, <<-EOF, 2
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_multiline_2
+#~# ORIGINAL heredoc_multiline_2
 
 foo 1 , <<-EOF1 , 2 , <<-EOF2 , 3
+  hdoc1
   foo
-  bar
 EOF1
-  baz
+  hdoc2
+  foo
 EOF2
 
 #~# EXPECTED
 
 foo 1, <<-EOF1, 2, <<-EOF2, 3
+  hdoc1
   foo
-  bar
 EOF1
-  baz
+  hdoc2
+  foo
 EOF2
 
-#~# ORIGINAL skip heredoc_multiline_3
+#~# ORIGINAL heredoc_multiline_3
 
 foo 1 , <<-EOF1 , 2 , <<-EOF2
   foo
@@ -62,7 +64,7 @@ EOF1
   baz
 EOF2
 
-#~# ORIGINAL skip heredoc_inside_method_call
+#~# ORIGINAL heredoc_inside_method_call
 
 foo(1 , <<-EOF , 2 )
   foo
@@ -76,7 +78,7 @@ foo(1, <<-EOF, 2)
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_with_method_called
+#~# ORIGINAL heredoc_with_method_called
 
 <<-EOF.foo
   bar
@@ -88,7 +90,7 @@ EOF
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_assigned_to_variable
+#~# ORIGINAL heredoc_assigned_to_variable
 
 x = <<-EOF.foo
   bar
@@ -100,7 +102,7 @@ x = <<-EOF.foo
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_assigned_to_multiple_variables
+#~# ORIGINAL heredoc_assigned_to_multiple_variables
 
 x, y = <<-EOF.foo, 2
   bar
@@ -112,7 +114,7 @@ x, y = <<-EOF.foo, 2
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_as_method_argument
+#~# ORIGINAL heredoc_as_method_argument
 
 call <<-EOF.foo, y
   bar
@@ -124,7 +126,7 @@ call <<-EOF.foo, y
   bar
 EOF
 
-#~# ORIGINAL skip heredoc_with_trailing_comment
+#~# ORIGINAL heredoc_with_trailing_comment
 
 <<-EOF
   foo
@@ -140,7 +142,7 @@ EOF
 
 # comment
 
-#~# ORIGINAL skip heredoc_as_strange_method_argument
+#~# ORIGINAL heredoc_as_strange_method_argument
 
 foo(<<-EOF)
   bar

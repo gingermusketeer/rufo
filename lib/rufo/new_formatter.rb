@@ -431,11 +431,10 @@ module Rufo
       when :on_backtick
         consume_token :on_backtick
       when :on_heredoc_beg
+        @heredocs.unshift(node)
         consume_token :on_heredoc_beg
         # Accumulate heredoc: we'll write it once
         # we find a newline.
-        @heredocs.unshift(node)
-        move_to_next_token
         return
       else
         consume_token :on_tstring_beg
@@ -449,7 +448,6 @@ module Rufo
       inner = node[1]
       inner = inner[1..-1] unless node[0] == :xstring_literal
 
-      write_hardline if @current_heredoc
       visit_exps(inner, with_lines: false)
 
       case current_token_kind
@@ -457,6 +455,7 @@ module Rufo
         consume_token :on_backtick
       when :on_heredoc_end
         consume_token :on_heredoc_end
+        @tokens << [[0, 0], :on_ignored_nl, "\n"]
       else
         consume_token :on_tstring_end
       end
@@ -1471,16 +1470,17 @@ module Rufo
     def move_to_next_token
       @tokens.pop
 
-      if (newline? || comment?) && !@heredocs.empty?
-        flush_heredocs
-      end
+      flush_heredocs if (newline? || comment?)
     end
 
     def flush_heredocs
+      first_heredoc = true
       while heredoc = @heredocs.shift
         @current_heredoc = heredoc
+        write_hardline if first_heredoc
         visit_string_literal_end(heredoc)
         @current_heredoc = nil
+        first_heredoc = false
       end
     end
 
