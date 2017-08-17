@@ -269,11 +269,12 @@ module Rufo
         end
 
         is_last = last?(i, exps)
+        is_void = exp == [:void_stmt]
 
         if with_lines
           needs_two_lines = !is_last && needs_two_lines?(exps[i + 1])
 
-          if exp == [:void_stmt] || (is_last && !allow_trailing_newline)
+          if is_void || (is_last && !allow_trailing_newline)
             skip_space_or_newline
           else
             consume_end_of_line(want_multiline: !is_last && !needs_two_lines)
@@ -389,6 +390,20 @@ module Rufo
       end
     end
 
+    def consume_comment
+      loop do
+        case current_token_kind
+        when :on_sp
+          move_to_next_token
+        when :on_comment
+          handle_comment
+          move_to_next_token
+        else
+          break
+        end
+      end
+    end
+
     def handle_comment(trailing: true)
       value = current_comment_value.rstrip
 
@@ -433,8 +448,10 @@ module Rufo
       indent(indent_level) do
         consume_keyword "begin"
 
+        consume_comment
+
         if body_statement_empty?(body_statement)
-          write "; "
+          write_if_break(HARDLINE, "; ")
           visit body_statement
         else
           write_breaking_hardline
@@ -693,7 +710,7 @@ module Rufo
       else
         write_hardline
         indent_body body
-        write_indent unless @line == line
+        write_hardline
         consume_keyword "end"
       end
     end
@@ -783,7 +800,7 @@ module Rufo
       body = body_without_void_statements(body)
 
       if body.empty?
-        skip_space_or_newline
+        indent { skip_space_or_newline }
       else
         write_breaking
         indent_body(body)
@@ -1772,7 +1789,7 @@ module Rufo
       end
 
       if keyword?("do")
-        write_hardline
+        write_breaking_hardline
         move_to_next_token
       end
 

@@ -4,8 +4,7 @@ begin;end
 
 #~# EXPECTED
 
-begin
-end
+begin; end
 
 #~# ORIGINAL begin end space before end
 
@@ -14,8 +13,7 @@ begin
 
 #~# EXPECTED
 
-begin
-end
+begin; end
 
 #~# ORIGINAL single line begin..end
 
@@ -121,7 +119,8 @@ begin;# hello
 
 #~# EXPECTED
 
-begin # hello
+begin
+  # hello
 end
 
 #~# ORIGINAL begin..end with comment in body
@@ -161,8 +160,7 @@ end
 
 #~# EXPECTED
 
-begin
-end
+begin; end
 
 # foo
 
