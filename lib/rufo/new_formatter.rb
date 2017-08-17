@@ -137,6 +137,8 @@ module Rufo
         visit_bodystmt(node)
       when :if
         visit_if(node)
+      when :lambda
+        visit_lambda(node)
       when :unless
         visit_unless(node)
       when :if_mod
@@ -225,6 +227,12 @@ module Rufo
         visit_comma_separated_list node[1]
       when :method_add_arg
         visit_call_without_receiver(node)
+      when :method_add_block
+        visit_call_with_block(node)
+      when :do_block
+        visit_do_block(node)
+      when :block_var
+        visit_block_arguments(node)
       when :call
         visit_call_with_receiver(node)
       when :BEGIN
@@ -855,6 +863,49 @@ module Rufo
       consume_keyword "end"
     end
 
+    def visit_lambda(node)
+      # [:lambda, [:params, nil, nil, nil, nil, nil, nil, nil], [[:void_stmt]]]
+      _, params, body = node
+
+      unless current_token_kind == :on_tlambda || current_token_value == "lambda"
+        bug "expected { or lambda"
+      end
+
+      move_to_next_token
+      write_if_break("lambda", "->")
+
+      visit params
+
+      consume_space
+
+      if body == [[:void_stmt]]
+        consume_token :on_tlambeg
+        consume_space
+        consume_token :on_rbrace
+        return
+      end
+
+      unless current_token_kind == :on_tlambeg || current_token_value == "do"
+        bug "expected { or do"
+      end
+
+      move_to_next_token
+      write_if_break("do", "{ ")
+      write_softline
+
+      indent do
+        visit_exps body
+      end
+
+      unless current_token_kind == :on_rbrace || current_token_value == "end"
+        bug "expected } or end"
+      end
+
+      move_to_next_token
+      write_softline
+      write_if_break("end", " }")
+    end
+
     def visit_suffix(node, suffix)
       # then if cond
       # then unless cond
@@ -999,6 +1050,8 @@ module Rufo
 
       visit name
 
+      return if args.empty?
+
       group(:visit_call_at_paren) do
         consume_token :on_lparen
         write_softline
@@ -1052,6 +1105,96 @@ module Rufo
 
       # :call means it's .()
       visit name if name != :call
+    end
+
+    def visit_call_with_block(node)
+      # [:method_add_block, call, block]
+      _, call, block = node
+
+      visit call
+
+      consume_space
+
+      visit block
+    end
+
+    def visit_do_block(node)
+      # [:brace_block, args, body]
+      _, args, body = node
+
+      empty_body = body == [[:void_stmt]]
+
+      if !args && empty_body
+        skip_keyword "do"
+        move_to_next_token
+        write "{ }"
+        skip_space_or_newline
+        skip_keyword "end"
+        return
+      end
+
+      consume_keyword "do"
+
+      if args
+        consume_space
+        visit(args)
+      end
+
+      write_breaking_hardline
+
+      if body.first == :bodystmt
+        visit body
+      else
+        indent_body body
+        consume_keyword "end"
+      end
+    end
+
+    def visit_block_arguments(node)
+      # [:block_var, params, local_params]
+      _, params, local_params = node
+
+      skip_space_or_newline
+
+      empty_params = empty_params?(params)
+
+      check :on_op
+
+      # check for ||
+      if empty_params && !local_params
+        # Don't write || as it's meaningless
+        move_to_next_token
+
+        if current_token_value == "|"
+          next_token
+          skip_space_or_newline
+          check :on_op
+          next_token
+        end
+        return
+      end
+
+      consume_token :on_op
+
+      skip_space_or_newline
+
+      unless empty_params
+        visit params
+        skip_space
+      end
+
+      if local_params
+        if semicolon?
+          consume_token :on_semicolon
+          consume_space
+        end
+
+        visit_comma_separated_list local_params
+      else
+        skip_space_or_newline
+      end
+
+      consume_op "|"
     end
 
     def visit_BEGIN(node)
@@ -1579,6 +1722,14 @@ module Rufo
         bug "Expected keyword #{value}, not #{current_token_value}"
       end
       write value
+      move_to_next_token
+    end
+
+    def skip_keyword(value)
+      check :on_kw
+      if current_token_value != value
+        bug "Expected keyword #{value}, not #{current_token_value}"
+      end
       move_to_next_token
     end
 
