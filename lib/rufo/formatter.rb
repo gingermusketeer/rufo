@@ -160,6 +160,18 @@ class Rufo::Formatter
   end
 
   def format
+    if ENV['NEW_PRINTER'] == 'true'
+      puts 'code:', @code.inspect
+      require 'pp'
+      # pp @sexp
+      doc = Rufo::RubyDocGenerator.new(@sexp).to_doc
+      puts 'doc:'
+      pp doc
+      @output = Rufo::DocPrinter.print_doc_to_string(
+        doc, print_width: 80, tab_width: 2
+      ).fetch(:formatted)
+      return
+    end
     visit @sexp
     consume_end
     write_line if !@last_was_newline || @output == ""
