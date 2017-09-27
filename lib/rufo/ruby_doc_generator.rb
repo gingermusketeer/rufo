@@ -169,6 +169,30 @@ module Rufo
           visit(target),
           visit(args)
         ])
+      when :method_add_block
+        # [:method_add_block, call, block]
+        _, target, block = node
+        return DocBuilder.concat([
+          visit(target),
+          visit(block)
+        ])
+      when :arg_paren
+        # [:arg_paren, args_and_block]
+        _, args = node
+        return DocBuilder.concat([
+          "(",
+          visit(args),
+          ")"
+        ])
+      when :brace_block
+        # [:brace_block, args, body]
+        _, args, body = node
+        return DocBuilder.concat([
+          "{",
+          args.nil? ? "" : visit(args),
+          DocBuilder.join(DocBuilder::HARD_LINE, visit_all(body)),
+          "}"
+        ])
       end
       pp node
       raise "unhandled #{node.inspect}"
