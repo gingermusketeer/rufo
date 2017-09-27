@@ -1,6 +1,6 @@
 module Rufo
   class DocBuilder
-
+    class InvalidDocError < StandardError; end
     class << self
       def concat(parts)
         assert_docs(parts)
@@ -22,13 +22,13 @@ module Rufo
       end
 
       def group(contents, opts = {})
-      assert_doc(contents)
-      {
-        type: :group,
-        contents: contents,
-        break: !!opts[:should_break],
-        expanded_states: opts[:expanded_states]
-      }
+        assert_doc(contents)
+        {
+          type: :group,
+          contents: contents,
+          break: !!opts[:should_break],
+          expanded_states: opts[:expanded_states]
+        }
       end
 
       def conditional_group(states, opts)
@@ -54,7 +54,14 @@ module Rufo
       end
 
       def join(sep, arr)
-        concat(arr.zip([sep]).flatten.compact)
+        result = []
+        arr.each_with_index do |element, index|
+          unless index == 0
+            result << sep
+          end
+          result << element
+        end
+        concat(result)
       end
 
       def add_alignment_to_doc(doc, size, tab_width)
@@ -71,8 +78,8 @@ module Rufo
       end
 
       def assert_doc(val)
-        unless val.is_a?(String) || (val.is_a?(Hash) && val[:type].is_a?(String))
-          raise new InvalidDocError("Value #{val.inspect} is not a valid document")
+        unless val.is_a?(String) || (val.is_a?(Hash) && (val[:type].is_a?(Symbol) || val[:type].is_a?(String)))
+          raise InvalidDocError.new("Value #{val.inspect} is not a valid document")
         end
       end
     end

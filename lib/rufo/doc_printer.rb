@@ -11,91 +11,9 @@ module Rufo
     MODE_FLAT = 2
     class << self
 
-
-      private
-
-      def make_indent(ind)
-        {
-          indent: ind.indent + 1,
-          align: ind.align
-        }
-      end
-
-      def make_align(ind, n)
-        return ROOT_INDENT if n == -Float::INFINITY
-        {
-          indent: ind.indent,
-          align: {
-            spaces: ind.align.spaces + n,
-            tabs: ind.align.tabs + (n ? 1 : 0)
-          }
-        }
-      end
-
-      def fits(next_cmd, rest_cmds, width, must_be_flat)
-        rest_idx = rest_cmds.size
-        cmds = [next_cmd]
-
-        while width >= 0 do
-          if cmds.size == 0
-            return true if (rest_idx == 0)
-            cmds.push(rest_cmds[rest_idx - 1])
-
-            rest_idx -= 1
-            next
-          end
-
-          x = cmds.pop
-          ind = x[0]
-          mode = x[1]
-          doc = x[2]
-
-          if doc.is_a?(string)
-            width -= doc.length
-          else
-            case doc[:type]
-            when :concat
-              doc[:parts].each { |part| cmds.push([ind, mode, part]) }
-            when :indent
-              cmds.push(make_indent(ind), mode, doc[:contents])
-            when :align
-              cmds.push([make_align(ind, doc[:n]), mode, doc[:contents]])
-            when :group
-              return false if must_be_flat && doc[:break]
-              cmds.push([ind, doc[:break] ? MODE_BREAK: mode, doc[:contents]])
-            when :fill
-              doc[:parts].each { |part| cmds.push([ind, mode, part]) }
-            when :if_break
-              if mode == MODE_BREAK && doc[:break_contents]
-                cmds.push([ind, mode, doc[:break_contents]])
-              elsif mode == MODE_FLAT && doc[:flat_contents]
-                cmds.push([ind, mode, doc[:flat_contents]])
-              end
-
-            when :line
-              case mode
-              when MODE_FLAT
-                unless doc[:hard]
-                  unless doc[:soft]
-                    width -= 1
-                  end
-                else
-                  return true
-                end
-              when MODE_BREAK
-                return true
-              end
-            end
-          end
-        end
-
-        return false
-      end
-
-
       def print_doc_to_string(doc, opts)
-        width = options.print_width
-        new_line = options.new_line || "\n"
+        width = opts.fetch(:print_width)
+        new_line = opts.fetch(:new_line, "\n")
         pos = 0
 
         cmds = [[ROOT_INDENT, MODE_BREAK, doc]]
@@ -116,9 +34,9 @@ module Rufo
             when :cursor
               out.push(cursor.placeholder)
             when :concat
-              doc[:parts].each { |part| cmds.push([ind, mode, part]) }
+              doc[:parts].reverse_each { |part| cmds.push([ind, mode, part]) }
             when :indent
-              cmds.push([make_indent(ind), mod, doc[:contents]])
+              cmds.push([make_indent(ind), mode, doc[:contents]])
             when :align
               cmds.push([make_align(ind, doc[:n]), mode, doc[:contents]])
             when :group
@@ -134,14 +52,8 @@ module Rufo
                 if !doc[:break] && fits(next_cmd, cmds, rem)
                   cmds.push(next_cmd)
                 else
-                  if doc[:expanded_states].present?
+                  unless doc[:expanded_states].nil?
                     raise 'not handled yet'
-                  #   most_expanded = doc.expanded_states.last
-                  #   if doc[:break]
-                  #     cmds.push([ind, MODE_BREAK, most_expanded])
-                  #   else
-
-                  #   end
                   else
                     cmds.push([ind, MODE_BREAK, doc[:contents]])
                   end
@@ -258,8 +170,8 @@ module Rufo
                     end
                   end
 
-                  length = ind.indent * options.tab_width + ind.align.spaces
-                  indent_string = " ".repeat(length)
+                  length = ind[:indent] * opts.fetch(:tab_width) + ind[:align][:spaces]
+                  indent_string = " " * length
                   out.push(new_line, indent_string)
                   pos = length
                 end
@@ -280,6 +192,86 @@ module Rufo
         end
 
         { formatted: out.join("") }
+      end
+
+      private
+
+      def make_indent(ind)
+        {
+          indent: ind[:indent] + 1,
+          align: ind[:align]
+        }
+      end
+
+      def make_align(ind, n)
+        return ROOT_INDENT if n == -Float::INFINITY
+        {
+          indent: ind[:indent],
+          align: {
+            spaces: ind[:align][:spaces] + n,
+            tabs: ind[:align][:tabs] + (n ? 1 : 0)
+          }
+        }
+      end
+
+      def fits(next_cmd, rest_cmds, width, must_be_flat)
+        rest_idx = rest_cmds.size
+        cmds = [next_cmd]
+
+        while width >= 0 do
+          if cmds.size == 0
+            return true if (rest_idx == 0)
+            cmds.push(rest_cmds[rest_idx - 1])
+
+            rest_idx -= 1
+            next
+          end
+
+          x = cmds.pop
+          ind = x[0]
+          mode = x[1]
+          doc = x[2]
+
+          if doc.is_a?(string)
+            width -= doc.length
+          else
+            case doc[:type]
+            when :concat
+              doc[:parts].each { |part| cmds.push([ind, mode, part]) }
+            when :indent
+              cmds.push(make_indent(ind), mode, doc[:contents])
+            when :align
+              cmds.push([make_align(ind, doc[:n]), mode, doc[:contents]])
+            when :group
+              return false if must_be_flat && doc[:break]
+              cmds.push([ind, doc[:break] ? MODE_BREAK: mode, doc[:contents]])
+            when :fill
+              doc[:parts].each { |part| cmds.push([ind, mode, part]) }
+            when :if_break
+              if mode == MODE_BREAK && doc[:break_contents]
+                cmds.push([ind, mode, doc[:break_contents]])
+              elsif mode == MODE_FLAT && doc[:flat_contents]
+                cmds.push([ind, mode, doc[:flat_contents]])
+              end
+
+            when :line
+              case mode
+              when MODE_FLAT
+                unless doc[:hard]
+                  unless doc[:soft]
+                    width -= 1
+                  end
+                else
+                  return true
+                end
+              when MODE_BREAK
+                return true
+              end
+            end
+          end
+        end
+
+        return false
       end
     end
   end
