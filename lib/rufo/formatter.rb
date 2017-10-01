@@ -180,6 +180,14 @@ class Rufo::Formatter
   end
 
   def visit(node)
+    result = visit_actual(node)
+    if result.nil?
+      fail "Unhandled node #{node.inspect}"
+    end
+    result
+  end
+
+  def visit_actual(node)
     puts node.inspect
     unless node.is_a?(Array)
       bug "unexpected node: #{node} at #{current_token}"
@@ -757,7 +765,7 @@ class Rufo::Formatter
 
     line = @line
 
-    visit target
+    t = visit target
     consume_one_dynamic_space @spaces_around_equal, force_one: @align_assignments
 
     # [:@op, "+=", [1, 2]],
@@ -771,9 +779,10 @@ class Rufo::Formatter
     write after
     next_token
 
-    visit_assign_value value
+    v = visit_assign_value value
 
     @assignments_ranges[line] = @line if @line != line
+    B.join(" ", [t, op[1], v])
   end
 
   def visit_multiple_assign(node)
@@ -1481,12 +1490,13 @@ class Rufo::Formatter
     #
     # [:begin, [:bodystmt, body, rescue_body, else_body, ensure_body]]
     consume_keyword "begin"
-    visit node[1]
+    B.group(B.join(B::HARD_LINE, ["begin", B.concat(visit(node[1])), "end"]), should_break: true)
   end
 
   def visit_bodystmt(node)
     # [:bodystmt, body, rescue_body, else_body, ensure_body]
     _, body, rescue_body, else_body, ensure_body = node
+    doc_list = []
 
     inside_type_body = @inside_type_body
     current_type = @current_type
@@ -1494,7 +1504,8 @@ class Rufo::Formatter
 
     line = @line
 
-    indent_body body, want_multiline: inside_type_body && @double_newline_inside_type == :dynamic
+    r = indent_body body, want_multiline: inside_type_body && @double_newline_inside_type == :dynamic
+    doc_list << B.indent(B.join(B::HARD_LINE, r))
 
     while rescue_body
       # [:rescue, type, name, body, more_rescue]
@@ -1543,6 +1554,7 @@ class Rufo::Formatter
 
     write_indent if @line != line
     consume_keyword "end"
+    doc_list
   end
 
   def visit_rescue_types(node)
@@ -3437,17 +3449,18 @@ class Rufo::Formatter
       next_token
       skip_space_or_newline
     end
-
+    r = []
     # If the body is [[:void_stmt]] it's an empty body
     # so there's nothing to write
     if exps.size == 1 && exps[0][0] == :void_stmt
       skip_space_or_newline
     else
       indent do
-        visit_exps exps, with_indent: true, want_trailing_multiline: want_multiline
+        r = visit_exps exps, with_indent: true, want_trailing_multiline: want_multiline
       end
       write_line unless @last_was_newline
     end
+    r
   end
 
   def maybe_indent(toggle, indent_size)
