@@ -190,7 +190,9 @@ class Rufo::Formatter
       # Topmost node
       #
       # [:program, exps]
-      visit_exps node[1], with_indent: true
+      parts = visit_exps(node[1], with_indent: true)
+      puts parts.inspect
+      B.join(B::HARD_LINE, parts)
     when :void_stmt
       # Empty statement
       #
@@ -223,6 +225,7 @@ class Rufo::Formatter
       # [:@gvar, "$abc", [1, 0]]
       write node[1]
       next_token
+      node[1]
     when :@backref
       # [:@backref, "$1", [1, 0]]
       write node[1]
@@ -262,7 +265,7 @@ class Rufo::Formatter
     when :symbol_literal
       visit_symbol_literal(node)
     when :symbol
-      ":#{visit_symbol(node)}"
+      visit_symbol(node)
     when :dyna_symbol
       visit_quoted_symbol_literal(node)
     when :@ident
@@ -322,8 +325,9 @@ class Rufo::Formatter
     when :vcall
       # [:vcall, exp]
       token_column = current_token_column
-      visit node[1]
+      result = visit node[1]
       adjust_visibility_indent(node[1], token_column)
+      result
     when :fcall
       # [:fcall, [:@ident, "foo", [1, 0]]]
       visit node[1]
@@ -436,6 +440,7 @@ class Rufo::Formatter
       # [:@op, "*", [1, 1]]
       write node[1]
       next_token
+      node[1]
     when :lambda
       visit_lambda(node)
     when :zsuper
@@ -534,7 +539,7 @@ class Rufo::Formatter
         skip_space_or_newline
       end
     end
-    B.concat(doc_list)
+    doc_list
   end
 
   def needs_two_lines?(exp)
@@ -688,7 +693,7 @@ class Rufo::Formatter
     #
     # [:symbol, [:@ident, "foo", [1, 1]]]
     consume_token :on_symbeg
-    visit_exps node[1..-1], with_lines: false
+    B.join(":", visit_exps(node[1..-1], with_lines: false))
   end
 
   def visit_quoted_symbol_literal(node)
@@ -733,14 +738,15 @@ class Rufo::Formatter
 
     line = @line
 
-    visit target
+    t = visit target
     consume_one_dynamic_space @spaces_around_equal, force_one: @align_assignments
 
     track_assignment
     consume_op "="
-    visit_assign_value value
+    v = visit_assign_value value
 
     @assignments_ranges[line] = @line if @line != line
+    B.concat([t, " = ", v])
   end
 
   def visit_op_assign(node)
@@ -1422,9 +1428,9 @@ class Rufo::Formatter
 
     if !args.empty? && args[0] == :args_add_star
       # arg1, ..., *star
-      visit args
+      result = visit args
     else
-      visit_comma_separated_list args
+      result = visit_comma_separated_list args
     end
 
     if block_arg
@@ -1440,6 +1446,7 @@ class Rufo::Formatter
       skip_space_or_newline
       visit block_arg
     end
+    result
   end
 
   def visit_args_add_star(node)
@@ -1678,6 +1685,7 @@ class Rufo::Formatter
   end
 
   def visit_comma_separated_list(nodes)
+    doc_list = []
     needs_indent = false
 
     if newline? || comment?
@@ -1692,11 +1700,11 @@ class Rufo::Formatter
     nodes = to_ary(nodes)
     nodes.each_with_index do |exp, i|
       maybe_indent(needs_indent, base_column) do
-        if block_given?
-          yield exp
-        else
-          visit exp
-        end
+        doc_list << if block_given?
+                      yield exp
+                    else
+                      visit exp
+                    end
       end
 
       next if last?(i, nodes)
@@ -1707,6 +1715,7 @@ class Rufo::Formatter
       next_token
       skip_space_or_newline_using_setting(@spaces_after_comma, base_column || @indent)
     end
+    B.join(',', doc_list)
   end
 
   def visit_mlhs_add_star(node)
@@ -2332,12 +2341,15 @@ class Rufo::Formatter
   end
 
   def visit_array_getter_or_setter(name, args)
-    visit name
+    doc_list = []
+    puts name.inspect
+    doc_list << visit(name)
 
     token_column = current_token_column
 
     check :on_lbracket
     write "["
+    doc_list << "["
     next_token
 
     column = @column
@@ -2363,7 +2375,7 @@ class Rufo::Formatter
 
       if args
         indent(needed_indent) do
-          visit args
+          doc_list << visit(args)
         end
       end
     end
@@ -2372,7 +2384,10 @@ class Rufo::Formatter
 
     check :on_rbracket
     write "]"
+    doc_list << "]"
     next_token
+    puts doc_list.inspect
+    B.concat(doc_list)
   end
 
   def visit_sclass(node)
