@@ -1,4 +1,4 @@
-#~# ORIGINAL 
+#~# ORIGINAL
 
 alias  foo  bar
 
@@ -6,7 +6,7 @@ alias  foo  bar
 
 alias foo bar
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 alias  :foo  :bar
 
@@ -14,7 +14,7 @@ alias  :foo  :bar
 
 alias :foo :bar
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 alias  store  []=
 
@@ -22,7 +22,7 @@ alias  store  []=
 
 alias store []=
 
-#~# ORIGINAL 
+#~# ORIGINAL
 
 alias  $foo  $bar
 

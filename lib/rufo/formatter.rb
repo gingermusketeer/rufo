@@ -3,6 +3,7 @@
 require "ripper"
 
 class Rufo::Formatter
+  B = Rufo::DocBuilder
   def self.format(code, **options)
     formatter = new(code, **options)
     formatter.format
@@ -160,7 +161,8 @@ class Rufo::Formatter
   end
 
   def format
-    visit @sexp
+    @doc = visit @sexp
+    @doc = B.concat([@doc, B::HARD_LINE])
     consume_end
     write_line if !@last_was_newline || @output == ""
     @output.chomp! if @output.end_with?("\n\n")
@@ -175,6 +177,7 @@ class Rufo::Formatter
   end
 
   def visit(node)
+    puts node.inspect
     unless node.is_a?(Array)
       bug "unexpected node: #{node} at #{current_token}"
     end
@@ -256,7 +259,7 @@ class Rufo::Formatter
     when :symbol_literal
       visit_symbol_literal(node)
     when :symbol
-      visit_symbol(node)
+      ":#{visit_symbol(node)}"
     when :dyna_symbol
       visit_quoted_symbol_literal(node)
     when :@ident
@@ -440,7 +443,9 @@ class Rufo::Formatter
     when :defined
       visit_defined(node)
     when :alias, :var_alias
-      visit_alias(node)
+      result = visit_alias(node)
+      puts result.inspect
+      result
     when :undef
       visit_undef(node)
     when :mlhs_add_star
@@ -467,7 +472,8 @@ class Rufo::Formatter
   end
 
   def visit_exps(exps, with_indent: false, with_lines: true, want_trailing_multiline: false)
-    consume_end_of_line(at_prefix: true)
+    doc_list = []
+    doc_list << consume_end_of_line(at_prefix: true)
 
     line_before_endline = nil
 
@@ -491,7 +497,7 @@ class Rufo::Formatter
       original_line = current_token_line
 
       push_node(exp) do
-        visit exp
+        doc_list << visit(exp)
       end
 
       if declaration?(exp) && @line == line_before_exp
@@ -525,6 +531,7 @@ class Rufo::Formatter
         skip_space_or_newline
       end
     end
+    B.concat(doc_list)
   end
 
   def needs_two_lines?(exp)
@@ -2564,9 +2571,13 @@ class Rufo::Formatter
 
     consume_keyword "alias"
     consume_space
-    visit from
+    frm = visit from
     consume_space
-    visit to
+    t = visit to
+    # puts "frm", frm.inspect
+    # puts "t", t.inspect
+    # require 'irb'; binding.irb
+    B.concat(["alias ", frm, " ", t])
   end
 
   def visit_undef(node)
@@ -3076,8 +3087,10 @@ class Rufo::Formatter
 
   def consume_token(kind)
     check kind
+    val = current_token_value
     consume_token_value(current_token_value)
     next_token
+    val
   end
 
   def consume_token_value(value)
@@ -3293,6 +3306,7 @@ class Rufo::Formatter
        (multilple_lines && (want_multiline || found_comment_after_newline))
       write_line
     end
+    B.concat(Array.new(newline_count, B::HARD_LINE))
   end
 
   def consume_embedded_comment
@@ -3901,6 +3915,9 @@ class Rufo::Formatter
   end
 
   def result
-    @output
+    # @output
+    puts @doc.inspect
+    # require 'irb'; binding.irb
+    Rufo::DocPrinter.print_doc_to_string(@doc, print_width: 80)[:formatted]
   end
 end
