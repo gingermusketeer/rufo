@@ -2860,21 +2860,26 @@ class Rufo::Formatter
   def visit_case(node)
     # [:case, cond, case_when]
     _, cond, case_when = node
-
+    doc_list = ["case"]
     consume_keyword "case"
 
     if cond
       consume_space
-      visit cond
+      doc_list << " "
+      doc_list << visit(cond)
     end
 
     consume_end_of_line
-
+    doc_list << B::HARD_LINE
     write_indent
-    visit case_when
+    doc_list << visit(case_when)
+
 
     write_indent
     consume_keyword "end"
+    doc_list << B::HARD_LINE
+    doc_list << "end"
+    B.concat(doc_list)
   end
 
   def visit_when(node)
@@ -2884,12 +2889,16 @@ class Rufo::Formatter
     preserve_whitespace = @spaces_around_when == :dynamic && !@align_case_when
 
     consume_keyword "when"
+    doc_list = []
+    when_group = ["when"]
     consume_space(want_preserve_whitespace: preserve_whitespace)
 
     space_after_when = nil
 
     indent(@column) do
-      visit_comma_separated_list conds
+      result = visit_comma_separated_list conds
+      when_group << " "
+      when_group << result
       space_after_when = current_token if space? && preserve_whitespace
       skip_space
     end
@@ -2912,13 +2921,13 @@ class Rufo::Formatter
         @case_when_positions.pop
       else
         if space_after_when
-          write_space space_after_when[2]
+          when_group << write_space( space_after_when[2])
         else
-          write_space
+          when_group << write_space
         end
 
         write "then"
-
+        when_group << "then"
         # We adjust the column and offset from:
         #
         #     when 1 then 2
@@ -2937,9 +2946,9 @@ class Rufo::Formatter
         end
 
         if space_after_then
-          write_space space_after_then[2]
+          when_group << write_space( space_after_then[2])
         else
-          write_space
+          when_group << write_space
         end
       end
     elsif semicolon?
@@ -2949,18 +2958,21 @@ class Rufo::Formatter
         inline = false
       else
         write ";"
+        when_group << ";"
         track_case_when
         write " "
+        when_group << " "
       end
     end
 
     if inline
       indent do
-        visit_exps body
+        when_group << B.concat(visit_exps(body))
       end
     else
-      indent_body body
+      when_group << indent_body( body)
     end
+    doc_list << B.concat(when_group)
 
     if next_exp
       write_indent
@@ -2968,6 +2980,7 @@ class Rufo::Formatter
       if next_exp[0] == :else
         # [:else, body]
         consume_keyword "else"
+        else_group = ["else"]
         track_case_when
         first_space = skip_space
 
@@ -2982,12 +2995,15 @@ class Rufo::Formatter
           else
             write_space_using_setting(first_space, @spaces_around_when)
           end
-          visit_exps next_exp[1]
+          else_group << " "
+          else_group << B.concat(visit_exps(next_exp[1]))
+          doc_list << B.concat(else_group)
         end
       else
-        visit next_exp
+        doc_list << visit(next_exp)
       end
     end
+    B.join(B::HARD_LINE, doc_list)
   end
 
   def consume_space(want_preserve_whitespace: false)
@@ -3483,6 +3499,7 @@ class Rufo::Formatter
   def write_space(value = " ")
     @output << value
     @column += value.size
+    value
   end
 
   def write_space_using_setting(first_space, setting, at_least_one: false)
