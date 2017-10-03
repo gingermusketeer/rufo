@@ -199,7 +199,6 @@ class Rufo::Formatter
       #
       # [:program, exps]
       parts = visit_exps(node[1], with_indent: true)
-      puts parts.inspect
       B.join(B::HARD_LINE, parts)
     when :void_stmt
       # Empty statement
@@ -459,9 +458,7 @@ class Rufo::Formatter
     when :defined
       visit_defined(node)
     when :alias, :var_alias
-      result = visit_alias(node)
-      puts result.inspect
-      result
+      visit_alias(node)
     when :undef
       visit_undef(node)
     when :mlhs_add_star
@@ -937,7 +934,7 @@ class Rufo::Formatter
     _, obj, text, name = node
 
     @dot_column = nil
-    visit obj
+    doc_list = [visit(obj)]
 
     first_space = skip_space
 
@@ -965,19 +962,21 @@ class Rufo::Formatter
     end
 
     consume_call_dot
+    doc_list << '.'
 
     skip_space_or_newline_using_setting(@spaces_around_dot, next_indent)
 
     if name == :call
       # :call means it's .()
     else
-      visit name
+      doc_list << visit(name)
     end
 
     # Only set it after we visit the call after the dot,
     # so we remember the outmost dot position
     @dot_column = dot_column if dot_column
     @original_dot_column = original_dot_column if original_dot_column
+    B.concat(doc_list)
   end
 
   def consume_call_dot
@@ -997,10 +996,10 @@ class Rufo::Formatter
     _, name, args = node
 
     @name_dot_column = nil
-    visit name
+    doc_list = [visit(name)]
 
     # Some times a call comes without parens (should probably come as command, but well...)
-    return if args.empty?
+    return B.concat(doc_list) if args.empty?
 
     # Remember dot column so it's not affected by args
     dot_column = @dot_column
@@ -1009,16 +1008,18 @@ class Rufo::Formatter
     want_indent = @name_dot_column && @name_dot_column > @indent
 
     maybe_indent(want_indent, @name_dot_column) do
-      visit_call_at_paren(node, args)
+      doc_list << visit_call_at_paren(node, args)
     end
 
     # Restore dot column so it's not affected by args
     @dot_column = dot_column
     @original_dot_column = original_dot_column
+    B.concat(doc_list)
   end
 
   def visit_call_at_paren(node, args)
-    consume_token :on_lparen
+    doc_list = []
+    doc_list << consume_token(:on_lparen)
 
     # If there's a trailing comma then comes [:arg_paren, args],
     # which is a bit unexpected, so we fix it
@@ -1049,7 +1050,7 @@ class Rufo::Formatter
       end
 
       push_call(node) do
-        visit args_node
+        doc_list << visit(args_node)
         skip_space
       end
 
@@ -1101,7 +1102,8 @@ class Rufo::Formatter
     if @last_was_heredoc
       write_line
     end
-    consume_token :on_rparen
+    doc_list << consume_token(:on_rparen)
+    B.concat(doc_list)
   end
 
   def visit_command(node)
@@ -1279,7 +1281,7 @@ class Rufo::Formatter
     # [:method_add_block, call, block]
     _, call, block = node
 
-    visit call
+    doc_list = [visit(call)]
 
     if block[0] == :brace_block
       consume_one_dynamic_space @spaces_around_block_brace
@@ -1290,23 +1292,28 @@ class Rufo::Formatter
     old_dot_column = @dot_column
     old_original_dot_column = @original_dot_column
 
-    visit block
+    doc_list << visit(block)
 
     @dot_column = old_dot_column
     @original_dot_column = old_original_dot_column
+    B.concat(doc_list)
   end
 
   def visit_brace_block(node)
     # [:brace_block, args, body]
     _, args, body = node
-
+    doc_list = []
+    lbrace = B.if_break("do", "{")
+    rbrace = B.if_break("end", "}")
     # This is for the empty `{ }` block
     if void_exps?(body)
       consume_token :on_lbrace
-      consume_block_args args
+      doc_list << lbrace
+      doc_list << consume_block_args(args)
       consume_one_dynamic_space @spaces_around_block_brace
       consume_token :on_rbrace
-      return
+      doc_list << rbrace
+      return B.group(B.concat(doc_list))
     end
 
     closing_brace_token, index = find_closing_brace_token
@@ -1314,9 +1321,12 @@ class Rufo::Formatter
     # If the whole block fits into a single line, use braces
     if current_token_line == closing_brace_token[0][0]
       consume_token :on_lbrace
-      consume_block_args args
+      doc_list << lbrace
+      r = consume_block_args(args)
+      doc_list << r unless r.nil?
       consume_one_dynamic_space @spaces_around_block_brace
-      visit_exps body, with_lines: false
+      r = visit_exps body, with_lines: false
+      doc_list << B.concat(r)
 
       while semicolon?
         next_token
@@ -1325,11 +1335,13 @@ class Rufo::Formatter
       consume_one_dynamic_space @spaces_around_block_brace
 
       consume_token :on_rbrace
-      return
+      doc_list << rbrace
+      return B.group(B.concat(doc_list))
     end
 
     # Otherwise it's multiline
     consume_token :on_lbrace
+    doc_list << lbrace
     consume_block_args args
 
     if call_info = @line_to_call_info[@line]
@@ -1346,6 +1358,8 @@ class Rufo::Formatter
     end
 
     consume_token :on_rbrace
+    doc_list << rbrace
+    B.group(B.concat(doc_list))
   end
 
   def visit_do_block(node)
@@ -1373,7 +1387,7 @@ class Rufo::Formatter
       # + 1 because of |...|
       #                ^
       indent(@column + 1) do
-        visit args
+        visit(args)
       end
     end
   end
@@ -2354,7 +2368,6 @@ class Rufo::Formatter
 
   def visit_array_getter_or_setter(name, args)
     doc_list = []
-    puts name.inspect
     doc_list << visit(name)
 
     token_column = current_token_column
@@ -2398,7 +2411,6 @@ class Rufo::Formatter
     write "]"
     doc_list << "]"
     next_token
-    puts doc_list.inspect
     B.concat(doc_list)
   end
 
@@ -2604,9 +2616,6 @@ class Rufo::Formatter
     frm = visit from
     consume_space
     t = visit to
-    # puts "frm", frm.inspect
-    # puts "t", t.inspect
-    # require 'irb'; binding.irb
     B.concat(["alias ", frm, " ", t])
   end
 
