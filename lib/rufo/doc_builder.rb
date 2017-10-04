@@ -85,6 +85,8 @@ module Rufo
         align(-Float::INFINITY, doc)
       end
 
+      attr_writer :disable_checks
+
       private
 
       def assert_docs(parts)
@@ -92,6 +94,7 @@ module Rufo
       end
 
       def assert_doc(val)
+        return true if @disable_checks
         unless val.is_a?(String) || (val.is_a?(Hash) && val[:type].is_a?(Symbol))
           raise InvalidDocError.new("Value #{val.inspect} is not a valid document")
         end

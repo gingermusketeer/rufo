@@ -10,6 +10,8 @@ RSpec.describe Rufo::DocBuilder do
   end
 
   it 'raises an error if a document is not the correct type' do
+    described_class.disable_checks = false
+
     invalid_docs = [
       [],
       1,

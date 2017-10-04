@@ -161,6 +161,9 @@ class Rufo::Formatter
   end
 
   def format
+    unless ENV["NEW_PRINTER"] == 'true'
+      B.disable_checks = true
+    end
     @doc = visit @sexp
     @doc = B.concat([@doc, B::HARD_LINE])
     consume_end
@@ -3915,9 +3918,9 @@ class Rufo::Formatter
   end
 
   def result
-    # @output
-    puts @doc.inspect
-    # require 'irb'; binding.irb
-    Rufo::DocPrinter.print_doc_to_string(@doc, print_width: 80)[:formatted]
+    if ENV["NEW_PRINTER"] == 'true'
+      return Rufo::DocPrinter.print_doc_to_string(@doc, print_width: 80)[:formatted]
+    end
+    @output
   end
 end
