@@ -417,6 +417,7 @@ class Rufo::Formatter
       # [:@label, "foo:", [1, 3]]
       write node[1]
       next_token
+      node[1]
     when :dot2
       visit_range(node, true)
     when :dot3
@@ -524,7 +525,11 @@ class Rufo::Formatter
       if with_lines
         exp_needs_two_lines = needs_two_lines?(exp)
 
-        consume_end_of_line(want_semicolon: !is_last, want_multiline: !is_last || want_trailing_multiline, needs_two_lines_on_comment: exp_needs_two_lines)
+        doc_list[-1] = B.concat([
+          doc_list[-1],
+          " ",
+          consume_end_of_line(want_semicolon: !is_last, want_multiline: !is_last || want_trailing_multiline, needs_two_lines_on_comment: exp_needs_two_lines)
+        ])
 
         # Make sure to put two lines before defs, class and others
         if !is_last && (exp_needs_two_lines || needs_two_lines?(exps[i + 1])) && @line <= line_before_endline + 1
@@ -2176,7 +2181,7 @@ class Rufo::Formatter
     next_token
 
     if elements
-      visit_literal_elements to_ary(elements), inside_array: true, token_column: token_column
+      doc_list = visit_literal_elements to_ary(elements), inside_array: true, token_column: token_column
     else
       skip_space_or_newline
     end
@@ -2184,6 +2189,23 @@ class Rufo::Formatter
     check :on_rbracket
     write "]"
     next_token
+
+    B.group(
+      B.concat([
+        "[",
+        B.indent(
+          B.concat([
+            B::SOFT_LINE,
+            B.join(
+              B.concat([",", B::LINE]),
+              doc_list
+            ),
+          ])
+        ),
+        B::SOFT_LINE,
+        "]",
+      ])
+    )
   end
 
   def visit_q_or_i_array(node)
@@ -2684,6 +2706,7 @@ class Rufo::Formatter
     wrote_comma = false
     last_has_comma = false
     first_space = nil
+    doc_list = []
 
     elements.each_with_index do |elem, i|
       is_last = last?(i, elements)
@@ -2691,9 +2714,9 @@ class Rufo::Formatter
       last_has_comma = false
 
       if needs_trailing_comma
-        indent(needed_indent) { visit elem }
+        indent(needed_indent) { doc_list << visit(elem) }
       else
-        visit elem
+        doc_list << visit(elem)
       end
 
       # We have to be careful not to aumatically write a heredoc on next_token,
@@ -2780,6 +2803,8 @@ class Rufo::Formatter
       # (otherwise we align it to the first parameter)
       call_info << @line
     end
+
+    doc_list
   end
 
   def check_heredocs_in_literal_elements(is_last, needs_trailing_comma, wrote_comma)
@@ -3192,6 +3217,7 @@ class Rufo::Formatter
     last_comment_has_newline = false    # Does the last comment has a newline?
     newline_count = 0                   # Number of newlines we passed
     last_space = first_space            # Last found space
+    doc_list = []
 
     loop do
       case current_token_kind
@@ -3337,7 +3363,9 @@ class Rufo::Formatter
         found_comment_after_newline = found_newline
         multilple_lines = false
 
-        write current_token_value.rstrip
+        clean_comment = current_token_value.rstrip
+        write clean_comment
+        doc_list << clean_comment
         next_token
       when :on_embdoc_beg
         if multilple_lines || last == :comment
@@ -3361,7 +3389,7 @@ class Rufo::Formatter
        (multilple_lines && (want_multiline || found_comment_after_newline))
       write_line
     end
-    B.concat(Array.new(newline_count, B::HARD_LINE))
+    B.concat([B.join(B::HARD_LINE, doc_list)] + Array.new(newline_count, B::HARD_LINE))
   end
 
   def consume_embedded_comment
