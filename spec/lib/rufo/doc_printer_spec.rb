@@ -99,13 +99,17 @@ RSpec.describe Rufo::DocPrinter do
   end
 
   context "array expression" do
+    def unindent(s)
+      s.gsub /^#{s[/\A[ \t]*/]}/, ''
+    end
+
     let(:code_filled) {
-      <<~CODE.chomp("\n")
+      unindent(<<-CODE.chomp("\n"))
         [1, 2, 3, 4, 5]
       CODE
     }
     let(:code_broken) {
-      <<~CODE.chomp("\n")
+      unindent(<<-CODE.chomp("\n"))
         [
           1,
           2,
