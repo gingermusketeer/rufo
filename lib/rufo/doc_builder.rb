@@ -68,6 +68,9 @@ module Rufo
 
       # Join list of items with a separator.
       def join(sep, arr)
+        if @disable_checks
+          return nil
+        end
         result = []
         arr.each_with_index do |element, index|
           unless index == 0

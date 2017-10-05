@@ -161,7 +161,9 @@ class Rufo::Formatter
   end
 
   def format
-    unless ENV["NEW_PRINTER"] == 'true'
+    if enabled?
+      B.disable_checks = false
+    else
       B.disable_checks = true
     end
     @doc = visit @sexp
@@ -181,14 +183,14 @@ class Rufo::Formatter
 
   def visit(node)
     result = visit_actual(node)
-    if result.nil?
+    if result.nil? && enabled?
       fail "Unhandled node #{node.inspect}"
     end
     result
   end
 
   def visit_actual(node)
-    puts node.inspect
+    puts node.inspect if enabled?
     unless node.is_a?(Array)
       bug "unexpected node: #{node} at #{current_token}"
     end
@@ -4000,9 +4002,13 @@ class Rufo::Formatter
   end
 
   def result
-    if ENV["NEW_PRINTER"] == 'true'
+    if enabled?
       return Rufo::DocPrinter.print_doc_to_string(@doc, print_width: 80)[:formatted]
     end
     @output
+  end
+
+  def enabled?
+    ENV["NEW_PRINTER"] == 'true'
   end
 end
