@@ -2114,21 +2114,42 @@ class Rufo::Formatter
 
     _, elements = node
 
+    doc = []
+    # doc = ["1", "2", "3", "4", B.concat(["5", B.if_break(",", "")])]
     token_column = current_token_column
 
     check :on_lbracket
-    write "["
+    # write "["
     next_token
 
     if elements
-      visit_literal_elements to_ary(elements), inside_array: true, token_column: token_column
+      doc = with_doc_mode {
+        visit_literal_elements_doc(to_ary(elements), inside_array: true, token_column: token_column)
+      }
     else
       skip_space_or_newline
     end
 
     check :on_rbracket
-    write "]"
+    # write "]"
     next_token
+
+    B.group(
+      B.concat([
+        "[",
+        B.indent(
+          B.concat([
+            B::SOFT_LINE,
+            B.join(
+              B.concat([",", B::LINE]),
+              doc
+            ),
+          ])
+        ),
+        B::SOFT_LINE,
+        "]",
+      ])
+    )
   end
 
   def visit_q_or_i_array(node)
