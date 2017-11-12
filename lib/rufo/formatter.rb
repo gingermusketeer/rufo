@@ -5,6 +5,7 @@ require "ripper"
 class Rufo::Formatter
   include Rufo::Settings
 
+  B = Rufo::DocBuilder
   INDENT_SIZE = 2
 
   attr_reader :squiggly_flag
@@ -398,7 +399,10 @@ class Rufo::Formatter
     when :params
       visit_params(node)
     when :array
-      visit_array(node)
+      puts node.inspect
+      doc = visit_array(node)
+      puts doc.inspect
+      @output << Rufo::DocPrinter.print_doc_to_string(doc, {print_width: 80})[:formatted]
     when :hash
       visit_hash(node)
     when :assoc_new
