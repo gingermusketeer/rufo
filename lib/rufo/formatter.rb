@@ -1183,15 +1183,16 @@ class Rufo::Formatter
 
   def flush_heredocs_doc
     doc = []
-    # if comment?
-    #   # write_space unless @output[-1] == " "
-    #   doc << current_token_value.rstrip
-    #   next_token
-    #   write_line
-    #   if @heredocs.last[1]
-    #     write_indent(next_indent)
-    #   end
-    # end
+    comment = nil
+    if comment?
+      # write_space unless @output[-1] == " "
+      comment = current_token_value.rstrip
+      next_token
+      # write_line
+      # if @heredocs.last[1]
+      #   write_indent(next_indent)
+      # end
+    end
 
     # printed = false
 
@@ -1206,7 +1207,7 @@ class Rufo::Formatter
     end
 
     @last_was_heredoc = true if printed
-    doc
+    [doc, comment]
   end
 
   def visit_command_call(node)
@@ -2877,7 +2878,36 @@ class Rufo::Formatter
       else
         element_doc << doc_el
       end
-      puts 'this', check_heredocs_in_literal_elements_doc
+      # next_token_no_heredoc_check
+      heredoc_val, heredoc_comment = check_heredocs_in_literal_elements_doc
+      unless heredoc_val.nil?
+        comment_doc = heredoc_comment
+
+        last = current_doc.pop
+        unless last.nil?
+          doc << B.join(
+            B.concat([",", B::LINE_SUFFIX_BOUNDARY, B::LINE]),
+            [
+              *current_doc,
+              B.concat([last, B.if_break(',', '')])
+            ]
+          )
+        end
+        current_doc = []
+        puts heredoc_val
+        # doc.concat(heredoc_val)
+        doc << B.concat([
+          *element_doc,
+          ",",
+          B.line_suffix(" " + comment_doc),
+          B::LINE_SUFFIX_BOUNDARY,
+          heredoc_val.last.rstrip,
+          # B::SOFT_LINE.merge(literal: true),
+          # 'EOF'
+        ])
+        has_heredocs = true
+        element_doc = []
+      end
       comments, newline_before_comment = skip_space_or_newline_doc
       unless comments.empty?
         has_comment = true
@@ -2887,11 +2917,14 @@ class Rufo::Formatter
 
       next unless comma?
       next_token_no_heredoc_check
-      heredoc_val = check_heredocs_in_literal_elements_doc
+      heredoc_val, heredoc_comment = check_heredocs_in_literal_elements_doc
+      puts comment_doc.inspect
       unless heredoc_val.nil?
         comment_doc = nil
         unless comments.empty?
           comment_doc = element_doc.pop
+        else
+          comment_doc = heredoc_comment
         end
 
         last = current_doc.pop
@@ -2947,7 +2980,8 @@ class Rufo::Formatter
       B.concat([",", B::LINE_SUFFIX_BOUNDARY, B::LINE]),
       current_doc
     )
-    puts doc.inspect
+
+    puts 'yo', doc.inspect
     B.group(
       B.concat([
         "[",
@@ -2979,14 +3013,16 @@ class Rufo::Formatter
   end
 
   def check_heredocs_in_literal_elements_doc
+    skip_space
     if (newline? || comment?) && !@heredocs.empty?
       # if is_last && trailing_commas
       #   write "," unless wrote_comma
       #   wrote_comma = true
       # end
 
-      flush_heredocs_doc
+      return flush_heredocs_doc
     end
+    []
   end
 
   def visit_if(node)
@@ -3683,6 +3719,7 @@ class Rufo::Formatter
   end
 
   def write(value)
+    raise value if value.include?('comment')
     @output << value unless in_doc_mode?
     @last_was_newline = false
     @last_was_heredoc = false
@@ -3868,6 +3905,9 @@ class Rufo::Formatter
     @tokens.pop
 
     if (newline? || comment?) && !@heredocs.empty?
+      if in_doc_mode?
+        return
+      end
       flush_heredocs
     end
 
