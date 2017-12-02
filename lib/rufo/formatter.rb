@@ -238,7 +238,8 @@ class Rufo::Formatter
       consume_token :on_backtick
     when :string_literal, :xstring_literal
       if in_doc_mode?
-        capture_output { visit_string_literal node }
+        puts 'capturing string in doc'
+        capture_output { visit_string_literal node, bail_on_heredoc: true }
       else
         visit_string_literal node
       end
@@ -605,7 +606,7 @@ class Rufo::Formatter
     end
   end
 
-  def visit_string_literal(node)
+  def visit_string_literal(node, bail_on_heredoc: false)
     # [:string_literal, [:string_content, exps]]
     heredoc = current_token_kind == :on_heredoc_beg
     tilde = current_token_value.include?("~")
@@ -614,9 +615,14 @@ class Rufo::Formatter
       write current_token_value.rstrip
       # Accumulate heredoc: we'll write it once
       # we find a newline.
+      puts 'adding heredoc'
       @heredocs << [node, tilde]
       # Get the next_token while capturing any output.
       # This is needed so that we can add a comma if one is not already present.
+      if bail_on_heredoc
+        next_token_no_heredoc_check
+        return
+      end
       captured_output = capture_output { next_token }
 
       inside_literal_elements_list = !@literal_elements_level.nil? &&
@@ -2869,7 +2875,7 @@ class Rufo::Formatter
     elements.each_with_index do |elem, i|
       current_doc.concat(element_doc)
       element_doc = []
-      puts 'HERE'
+      puts "HERE #{i}"
       puts elem.inspect
       doc_el = visit(elem)
       puts doc_el.inspect
@@ -2880,6 +2886,7 @@ class Rufo::Formatter
       end
       # next_token_no_heredoc_check
       heredoc_val, heredoc_comment = check_heredocs_in_literal_elements_doc
+      puts heredoc_val.inspect, heredoc_comment.inspect
       unless heredoc_val.nil?
         comment_doc = heredoc_comment
 
@@ -2939,14 +2946,16 @@ class Rufo::Formatter
         end
         current_doc = []
         puts heredoc_val
+        comment_array = [B.line_suffix(" " + comment_doc)] if comment_doc
+        comment_array ||= []
         # doc.concat(heredoc_val)
         doc << B.concat([
           *element_doc,
           ",",
-          # B.line_suffix(' # a comment'),
+          *comment_array,
           B::LINE_SUFFIX_BOUNDARY,
           heredoc_val.last.rstrip,
-          # B::SOFT_LINE.merge(literal: true),
+          B::SOFT_LINE,
           # 'EOF'
         ])
         has_heredocs = true
@@ -3014,13 +3023,20 @@ class Rufo::Formatter
 
   def check_heredocs_in_literal_elements_doc
     skip_space
+    puts current_token.inspect
     if (newline? || comment?) && !@heredocs.empty?
+      puts 'flushing heredocs'
       # if is_last && trailing_commas
       #   write "," unless wrote_comma
       #   wrote_comma = true
       # end
 
-      return flush_heredocs_doc
+      r = flush_heredocs_doc
+      # unless r.empty?
+      #   raise 'here'
+      # end
+      puts r.inspect
+      return r
     end
     []
   end
@@ -3719,7 +3735,6 @@ class Rufo::Formatter
   end
 
   def write(value)
-    raise value if value.include?('comment')
     @output << value unless in_doc_mode?
     @last_was_newline = false
     @last_was_heredoc = false
