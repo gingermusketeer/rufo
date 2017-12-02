@@ -226,31 +226,4 @@ RSpec.describe Rufo::DocPrinter do
       )
     end
   end
-  context 'array with heredoc and comment' do
-    let(:doc) {
-      {:type=>:concat, :parts=>["<<-EOF", ",", {:type=>:line_suffix_boundary}, "\n  bar\nEOF"]}
-    }
-    let(:doc) {
-      {
-        :type=>:concat,
-        :parts=>[
-          "[",
-          {:type=>:concat, :parts=>["<<-EOF", ",", {:type=>:line_suffix_boundary}, "\n  bar\nEOF"]},
-          {:type=>:line, :soft=>true},
-          "]"
-        ]
-      }
-    }
-
-
-    it 'formats array with comment' do
-      expect(print(doc, print_width: 80)).to eql(<<~RUBY.chomp("\n")
-        [<<-EOF,
-          bar
-          EOF
-        ]
-      RUBY
-      )
-    end
-  end
 end
